@@ -1,6 +1,6 @@
 "use client";
 
-import { forwardRef, useState, type InputHTMLAttributes } from "react";
+import { forwardRef, useId, useState, type InputHTMLAttributes } from "react";
 import { Eye, EyeOff } from "lucide-react";
 
 interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
@@ -10,24 +10,32 @@ interface InputProps extends InputHTMLAttributes<HTMLInputElement> {
 }
 
 export const Input = forwardRef<HTMLInputElement, InputProps>(
-  ({ label, icon, error, type, className = "", ...props }, ref) => {
+  ({ label, icon, error, type, className = "", id, ...props }, ref) => {
     const [showPassword, setShowPassword] = useState(false);
+    const generatedId = useId();
+    const inputId = id ?? generatedId;
     const isPassword = type === "password";
 
     return (
       <div className="flex flex-col gap-2">
         {label && (
-          <label className="text-sm text-muted-foreground">{label}</label>
+          <label htmlFor={inputId} className="text-sm text-muted-foreground">
+            {label}
+          </label>
         )}
+
         <div className="relative">
           {icon && (
             <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground">
               {icon}
             </span>
           )}
+
           <input
             ref={ref}
+            id={inputId}
             type={isPassword && showPassword ? "text" : type}
+            aria-invalid={!!error}
             className={`
               w-full rounded-lg border border-border bg-input px-4 py-3
               text-foreground placeholder:text-muted-foreground
@@ -39,6 +47,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             `}
             {...props}
           />
+
           {isPassword && (
             <button
               type="button"
@@ -49,6 +58,7 @@ export const Input = forwardRef<HTMLInputElement, InputProps>(
             </button>
           )}
         </div>
+
         {error && <span className="text-sm text-destructive">{error}</span>}
       </div>
     );
