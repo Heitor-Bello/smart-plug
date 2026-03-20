@@ -1,10 +1,69 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# ⚡ Smart Plug - Monitoramento Inteligente de Energia
 
-## Getting Started
+Aplicação web integrada a um dispositivo inteligente para **acompanhar, analisar e otimizar o consumo de energia elétrica em tempo real**.
 
-First, run the development server:
+---
 
-```bash
+## 📌 Sobre o projeto
+
+O **Smart Plug** é uma solução completa que combina **hardware + software** para oferecer controle detalhado do consumo energético.
+
+A aplicação permite que usuários:
+
+- 📊 Visualizem consumo em tempo real
+- 📈 Analisem histórico de uso
+- ⚙️ Otimizem o consumo de energia
+- 🔌 Gerenciem dispositivos conectados
+
+---
+
+## 🚀 Tecnologias utilizadas
+
+### Frontend
+
+- Next.js
+- React
+- TypeScript
+- TailwindCSS
+- React Hook Form + Zod
+
+### Backend / Auth
+
+- Better Auth
+- Prisma ORM
+
+### Banco de Dados
+
+- PostgreSQL (ou outro compatível com Prisma)
+
+### Infraestrutura
+
+- Vercel (deploy)
+- Node.js
+
+---
+
+## 🧠 Funcionalidades
+
+- ✅ Cadastro e autenticação de usuários
+- ✅ Login seguro
+- ✅ Dashboard de consumo energético
+- ✅ Integração com dispositivo inteligente (Smart Plug)
+- ✅ Monitoramento em tempo real
+- ✅ Histórico de consumo
+- ✅ Interface moderna e responsiva
+
+---
+
+## 📷 Preview
+
+> (Em construção...)
+
+---
+
+## ⚙️ Como rodar o projeto
+
+````bash
 npm run dev
 # or
 yarn dev
@@ -12,25 +71,121 @@ yarn dev
 pnpm dev
 # or
 bun dev
+´´´
+
+### 1. Clone o repositório
+
+```bash
+git clone https://github.com/Heitor-Bello/smart-plug.git
+cd smart-plug
+````
+
+---
+
+### 2. Instale as dependências
+
+```bash
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+---
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 3. Configure as variáveis de ambiente
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+Crie um arquivo `.env` na raiz:
 
-## Learn More
+```env
+DATABASE_URL="sua_url_do_banco"
+BETTER_AUTH_SECRET="seu_secret"
+BETTER_AUTH_URL="http://localhost:3000"
+NEXT_PUBLIC_BASE_URL="http://localhost:3000"
+```
 
-To learn more about Next.js, take a look at the following resources:
+---
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+### 4. Rode as migrations
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```bash
+npx prisma migrate dev
+```
 
-## Deploy on Vercel
+---
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+### 5. Gere o Prisma Client
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npx prisma generate
+```
+
+---
+
+### 6. Inicie o projeto
+
+```bash
+npm run dev
+```
+
+---
+
+## 🌍 Deploy
+
+O projeto está preparado para deploy na **Vercel**.
+
+### Variáveis obrigatórias na Vercel:
+
+- `DATABASE_URL`
+- `BETTER_AUTH_SECRET`
+- `BETTER_AUTH_URL`
+- `NEXT_PUBLIC_BASE_URL`
+
+---
+
+## 🧩 Estrutura do projeto
+
+```
+src/
+ ├── app/
+ ├── components/
+ ├── lib/
+ │    ├── prisma.ts
+ │    └── auth-client.ts
+ ├── hooks/
+ ├── styles/
+ └── utils/
+```
+
+---
+
+## 🔐 Autenticação
+
+O projeto utiliza **Better Auth** com integração ao Prisma.
+
+---
+
+## 📈 Futuras melhorias
+
+- 🔔 Alertas de consumo excessivo
+- 📱 Aplicativo mobile
+- 🤖 Recomendações inteligentes com IA
+- 📊 Relatórios avançados
+- 🏠 Integração com casas inteligentes (IoT)
+
+---
+
+## 📄 Licença
+
+Este projeto está sob a licença MIT.
+
+---
+
+## 👨‍💻 Autor
+
+Desenvolvido por **Heitor Bello**
+
+- GitHub: [https://github.com/Heitor-Bello](https://github.com/Heitor-Bello)
+
+---
+
+## ⚡ Status do projeto
+
+🚧 Em desenvolvimento
