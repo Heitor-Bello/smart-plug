@@ -3,10 +3,14 @@
 import Link from "next/link";
 import { Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
 import { useForm } from "react-hook-form";
-import { z } from "zod";
+import { set, z } from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
+import { useRouter } from "next/navigation";
+
+import { authClient } from "@/lib/auth-client";
+import { useState } from "react";
 
 const loginSchema = z.object({
   email: z.email("Digite um e-mail válido"),
@@ -16,6 +20,10 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 export function LoginForm() {
+  const router = useRouter();
+
+  const [authError, setAuthError] = useState<string | null>(null);
+
   const {
     register,
     handleSubmit,
@@ -28,7 +36,31 @@ export function LoginForm() {
     },
   });
 
-  async function onSubmit(data: LoginFormData) {}
+  async function onSubmit(formData: LoginFormData) {
+    setAuthError(null);
+
+    await authClient.signIn.email(
+      {
+        email: formData.email,
+        password: formData.password,
+        callbackURL: "/",
+      },
+      {
+        onRequest: (ctx) => {},
+        onSuccess: (ctx) => {
+          console.log("Login bem-sucedido: ", ctx);
+          router.replace("/");
+        },
+        onError: (ctx) => {
+          setAuthError(
+            ctx.error.code === "INVALID_EMAIL_OR_PASSWORD"
+              ? "E-mail ou senha inválidos"
+              : "Erro ao fazer login",
+          );
+        },
+      },
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
@@ -74,6 +106,12 @@ export function LoginForm() {
               />
             </div>
           </div>
+
+          {authError && (
+            <div className="rounded-md border border-red-500/30 bg-red-500/10 px-3 py-2 text-sm text-red-600">
+              {authError}
+            </div>
+          )}
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? (
