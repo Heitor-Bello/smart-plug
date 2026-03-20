@@ -35,20 +35,20 @@ export function RegisterForm() {
         {/* Header */}
         <div className="mb-8">
           <h2 className="text-3xl font-bold text-foreground mb-2">
-            Join the intelligence.
+            Junte-se à inteligência.
           </h2>
           <p className="text-muted-foreground">
-            Create your command center account today.
+            Crie sua conta no centro de análise energética hoje mesmo.
           </p>
         </div>
 
         {/* Form */}
         <form onSubmit={handleSubmit} className="space-y-5">
           <Input
-            label="Full Name"
+            label="Nome Completo"
             name="fullName"
             type="text"
-            placeholder="Enter your full name"
+            placeholder="Digite seu nome completo"
             icon={<User size={20} />}
             value={formData.fullName}
             onChange={handleChange}
@@ -56,10 +56,10 @@ export function RegisterForm() {
           />
 
           <Input
-            label="Email Address"
+            label="Endereço de Email"
             name="email"
             type="email"
-            placeholder="name@company.com"
+            placeholder="nome@email.com"
             icon={<Mail size={20} />}
             value={formData.email}
             onChange={handleChange}
@@ -67,7 +67,7 @@ export function RegisterForm() {
           />
 
           <Input
-            label="Password"
+            label="Senha"
             name="password"
             type="password"
             placeholder="••••••••"
@@ -78,7 +78,7 @@ export function RegisterForm() {
           />
 
           <Input
-            label="Confirm Password"
+            label="Confirmar Senha"
             name="confirmPassword"
             type="password"
             placeholder="••••••••"
@@ -95,19 +95,16 @@ export function RegisterForm() {
               onChange={handleChange}
               label={
                 <>
-                  By creating an account, you agree to the{" "}
-                  <Link
-                    href="/terms"
-                    className="text-primary hover:underline"
-                  >
-                    Terms of Service
+                  Ao criar uma conta, você concorda com os{" "}
+                  <Link href="/terms" className="text-primary hover:underline">
+                    Termos de Serviço
                   </Link>{" "}
-                  and{" "}
+                  e{" "}
                   <Link
                     href="/privacy"
                     className="text-primary hover:underline"
                   >
-                    Privacy Policy
+                    Política de Privacidade
                   </Link>
                   .
                 </>
@@ -116,19 +113,19 @@ export function RegisterForm() {
           </div>
 
           <Button type="submit" className="w-full mt-6">
-            Create Account
+            Criar Conta
             <ArrowRight size={18} />
           </Button>
         </form>
 
         {/* Login Link */}
         <p className="text-center text-muted-foreground mt-8">
-          Already have an account?{" "}
+          Já possui uma conta?{" "}
           <Link
             href="/login"
             className="text-foreground font-medium hover:text-primary transition-colors"
           >
-            Login here
+            Faça login
             <span className="ml-1">&rsaquo;</span>
           </Link>
         </p>

@@ -13,33 +13,33 @@ export function BrandPanel() {
         </div>
 
         <h1 className="text-3xl lg:text-4xl font-bold text-foreground leading-tight">
-          Energy Intelligence
+          Inteligência Energética
           <br />
-          Command Center
+          <span className="text-[#A4E6FF]">Centro de Comando</span>
         </h1>
       </div>
 
       {/* Stats Chart */}
       <div className="flex-1 flex flex-col justify-center py-8">
         <div className="flex items-end gap-3 h-32 mb-6">
-          <div className="w-8 bg-primary/80 rounded-t-sm h-[60%]" />
-          <div className="w-8 bg-primary rounded-t-sm h-full" />
-          <div className="w-8 bg-primary/60 rounded-t-sm h-[45%]" />
+          <div className="w-2 bg-secondary/80 rounded-sm h-[30%]" />
+          <div className="w-2 bg-primary rounded-sm h-[40%]" />
+          <div className="w-2 bg-primary/60 rounded-sm h-[60%]" />
+          <div className="w-2 bg-primary/60 rounded-sm h-[20%]" />
+          <div></div>
+          <div className="w-2 bg-secondary/80 rounded-sm h-[30%]" />
+          <div className="w-2 bg-primary rounded-sm h-[40%]" />
+          <div className="w-2 bg-primary/60 rounded-sm h-[60%]" />
+          <div className="w-2 bg-primary/60 rounded-sm h-[20%]" />
         </div>
         <div className="w-full h-px bg-muted mb-8" />
 
         <div className="flex gap-12">
           <div>
             <p className="text-xs text-muted-foreground tracking-wider uppercase mb-1">
-              Efficiency Rate
+              Taxa de eficiência
             </p>
             <p className="text-2xl font-bold text-primary">98.4%</p>
-          </div>
-          <div>
-            <p className="text-xs text-muted-foreground tracking-wider uppercase mb-1">
-              Active Nodes
-            </p>
-            <p className="text-2xl font-bold text-foreground">1,204</p>
           </div>
         </div>
       </div>
@@ -58,7 +58,13 @@ export function BrandPanel() {
             className="opacity-40"
           />
           <defs>
-            <linearGradient id="arcGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <linearGradient
+              id="arcGradient"
+              x1="0%"
+              y1="0%"
+              x2="100%"
+              y2="100%"
+            >
               <stop offset="0%" stopColor="#00D1FF" />
               <stop offset="100%" stopColor="#00D1FF" stopOpacity="0" />
             </linearGradient>
@@ -68,7 +74,7 @@ export function BrandPanel() {
 
       {/* Footer */}
       <p className="text-sm text-muted-foreground relative z-10">
-        &copy; 2024 VoltMetric Intelligence. All rights reserved.
+        &copy; 2024 VoltMetric Inteligência. Todos os direitos reservados.
       </p>
     </div>
   );

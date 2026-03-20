@@ -13,7 +13,7 @@ export function LoginBrandPanel() {
         <span className="text-primary font-bold text-xl">VoltMetric Pro</span>
       </div>
       <p className="text-muted-foreground text-sm mb-12">
-        Energy Intelligence Command Center
+        Inteligência Energética
       </p>
 
       {/* Pulse Visualization */}
@@ -21,10 +21,10 @@ export function LoginBrandPanel() {
         <div className="relative w-64 h-64">
           {/* Outer border with gradient */}
           <div className="absolute inset-0 rounded-2xl border border-primary/30 bg-gradient-to-b from-primary/5 to-transparent" />
-          
+
           {/* Inner glow */}
           <div className="absolute inset-4 rounded-xl border border-primary/20" />
-          
+
           {/* Center pulse line */}
           <div className="absolute inset-0 flex items-center justify-center">
             <svg
@@ -42,7 +42,13 @@ export function LoginBrandPanel() {
                 className="animate-pulse"
               />
               <defs>
-                <linearGradient id="pulseGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <linearGradient
+                  id="pulseGradient"
+                  x1="0%"
+                  y1="0%"
+                  x2="100%"
+                  y2="0%"
+                >
                   <stop offset="0%" stopColor="#00D1FF" stopOpacity="0.3" />
                   <stop offset="50%" stopColor="#00D1FF" stopOpacity="1" />
                   <stop offset="100%" stopColor="#00D1FF" stopOpacity="0.3" />
@@ -67,10 +73,12 @@ export function LoginBrandPanel() {
       {/* Quote Box */}
       <div className="mt-auto bg-secondary/50 rounded-xl p-6 border border-border">
         <p className="text-foreground font-medium mb-2">
-          {'"Monitoring the pulse of every kilowatt."'}
+          {'"Monitorando o pulso de cada quilowatt."'}
         </p>
         <p className="text-muted-foreground text-sm">
-          {"Visualize, analyze and optimize your facility's energy footprint in real-time with industrial precision."}
+          {
+            "Visualize, analise e otimize o consumo energético da sua instalação em tempo real com precisão industrial."
+          }
         </p>
       </div>
     </div>

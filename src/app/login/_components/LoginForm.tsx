@@ -5,16 +5,24 @@ import Link from "next/link";
 import { Mail, Lock, ArrowRight } from "lucide-react";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
-import { Checkbox } from "@/components/ui/Checkbox";
 
 export function LoginForm() {
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
-  const [rememberMe, setRememberMe] = useState(false);
+  const [formData, setFormData] = useState({
+    email: "",
+    password: "",
+  });
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log({ email, password, rememberMe });
+    // Handle form submission
+  };
+
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setFormData((prev) => ({
+      ...prev,
+      [name]: value,
+    }));
   };
 
   return (
@@ -32,11 +40,12 @@ export function LoginForm() {
         <form onSubmit={handleSubmit} className="space-y-5">
           <Input
             label="E-mail"
+            name="email"
             type="email"
-            placeholder="nome@empresa.com"
+            placeholder="nome@email.com"
             icon={<Mail size={20} />}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            value={formData.email}
+            onChange={handleChange}
             required
           />
 
@@ -52,21 +61,16 @@ export function LoginForm() {
             </div>
             <div className="relative">
               <Input
+                name="password"
                 type="password"
                 placeholder="••••••••"
                 icon={<Lock size={20} />}
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
+                value={formData.password}
+                onChange={handleChange}
                 required
               />
             </div>
           </div>
-
-          <Checkbox
-            label="Manter conectado por 30 dias"
-            checked={rememberMe}
-            onChange={(e) => setRememberMe(e.target.checked)}
-          />
 
           <Button type="submit" className="w-full">
             Entrar
@@ -89,7 +93,7 @@ export function LoginForm() {
           </div>
           <div className="relative flex justify-center text-xs uppercase">
             <span className="bg-background px-4 text-muted-foreground">
-              Ou acesse com SSO
+              Ou acesse com:
             </span>
           </div>
         </div>
