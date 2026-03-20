@@ -156,3 +156,105 @@ import { Checkbox } from "@/components/ui/Checkbox";
 - **Tailwind CSS v4** (com `@theme inline` para design tokens)
 - **TypeScript**
 - **Lucide React** (icones)
+
+---
+
+## Dependencias de Backend e Validacao
+
+### Prisma ORM
+
+Utilizado para modelagem de dados e migracoes do banco de dados PostgreSQL.
+
+```bash
+# Comandos uteis
+npx prisma generate    # Gera o client do Prisma
+npx prisma migrate dev # Executa migracoes em desenvolvimento
+npx prisma studio      # Interface visual do banco
+```
+
+**Pacotes:**
+- `@prisma/client` - Client para queries
+- `@prisma/adapter-pg` - Adapter para PostgreSQL
+
+### Better Auth
+
+Biblioteca de autenticacao utilizada para gerenciar login, registro e sessoes.
+
+```typescript
+// Exemplo de configuracao (lib/auth.ts)
+import { betterAuth } from "better-auth";
+import { prismaAdapter } from "better-auth/adapters/prisma";
+
+export const auth = betterAuth({
+  database: prismaAdapter(prisma, {
+    provider: "postgresql",
+  }),
+  // ... configuracoes adicionais
+});
+```
+
+### React Hook Form + Zod
+
+Utilizados para controle e validacao de formularios.
+
+```typescript
+// Exemplo de schema de validacao
+import { z } from "zod";
+
+export const loginSchema = z.object({
+  email: z.string().email("E-mail invalido"),
+  password: z.string().min(6, "Senha deve ter no minimo 6 caracteres"),
+});
+
+export type LoginFormData = z.infer<typeof loginSchema>;
+```
+
+```typescript
+// Exemplo de uso no componente
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+const form = useForm<LoginFormData>({
+  resolver: zodResolver(loginSchema),
+  defaultValues: {
+    email: "",
+    password: "",
+  },
+});
+```
+
+---
+
+## Estrutura de Validacao (Recomendada)
+
+```
+src/
+├── lib/
+│   ├── auth.ts              # Configuracao do Better Auth
+│   ├── prisma.ts            # Instancia do Prisma Client
+│   └── validations/
+│       ├── auth.ts          # Schemas de login/registro
+│       └── index.ts         # Re-exportacoes
+│
+└── prisma/
+    ├── schema.prisma        # Modelo do banco de dados
+    └── migrations/          # Historico de migracoes
+```
+
+---
+
+## Padroes de Formularios
+
+Todos os formularios devem seguir o padrao:
+
+1. **Schema Zod**: Definir validacao em `lib/validations/`
+2. **React Hook Form**: Usar `useForm` com `zodResolver`
+3. **Componentes UI**: Utilizar `Input`, `Button`, `Checkbox` de `/components/ui/`
+4. **Tratamento de erros**: Exibir mensagens de erro abaixo dos campos
+
+```tsx
+// Padrao de exibicao de erro
+{errors.email && (
+  <span className="text-sm text-destructive">{errors.email.message}</span>
+)}
+```

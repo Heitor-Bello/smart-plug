@@ -1,29 +1,34 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
-import { Mail, Lock, ArrowRight } from "lucide-react";
+import { Mail, Lock, ArrowRight, Loader2 } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 
+const loginSchema = z.object({
+  email: z.string().email("Digite um e-mail válido"),
+  password: z.string().min(8, "A senha deve conter no mínimo 8 caracteres"),
+});
+
+type LoginFormData = z.infer<typeof loginSchema>;
+
 export function LoginForm() {
-  const [formData, setFormData] = useState({
-    email: "",
-    password: "",
+  const {
+    register,
+    handleSubmit,
+    formState: { errors, isSubmitting },
+  } = useForm<LoginFormData>({
+    resolver: zodResolver(loginSchema),
+    defaultValues: {
+      email: "",
+      password: "",
+    },
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // Handle form submission
-  };
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({
-      ...prev,
-      [name]: value,
-    }));
-  };
+  async function onSubmit(data: LoginFormData) { }
 
   return (
     <div className="flex flex-col h-full">
@@ -37,21 +42,20 @@ export function LoginForm() {
         </div>
 
         {/* Form */}
-        <form onSubmit={handleSubmit} className="space-y-5">
+        <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
           <Input
             label="E-mail"
-            name="email"
             type="email"
             placeholder="nome@email.com"
             icon={<Mail size={20} />}
-            value={formData.email}
-            onChange={handleChange}
-            required
+            error={errors.email?.message}
+            disabled={isSubmitting}
+            {...register("email")}
           />
 
           <div className="space-y-2">
             <div className="flex items-center justify-between">
-              <label className="text-sm text-muted-foreground">Senha</label>
+              <span className="text-sm text-muted-foreground">Senha</span>
               <Link
                 href="/forgot-password"
                 className="text-sm text-primary hover:underline"
@@ -61,20 +65,28 @@ export function LoginForm() {
             </div>
             <div className="relative">
               <Input
-                name="password"
                 type="password"
                 placeholder="••••••••"
                 icon={<Lock size={20} />}
-                value={formData.password}
-                onChange={handleChange}
-                required
+                error={errors.password?.message}
+                disabled={isSubmitting}
+                {...register("password")}
               />
             </div>
           </div>
 
-          <Button type="submit" className="w-full">
-            Entrar
-            <ArrowRight size={18} />
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                Entrando...
+              </>
+            ) : (
+              <>
+                Entrar
+                <ArrowRight size={18} />
+              </>
+            )}
           </Button>
         </form>
 
@@ -98,7 +110,7 @@ export function LoginForm() {
           </div>
         </div>
 
-        {/* Google SSO Button */}
+        {/* Google Button */}
         <Button variant="outline" className="w-full">
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
