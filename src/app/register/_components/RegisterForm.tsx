@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { User, Mail, Lock, RefreshCw, ArrowRight, Loader2 } from "lucide-react";
 import { useForm, Controller } from "react-hook-form";
 import { z } from "zod";
@@ -10,6 +10,8 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { Input } from "@/components/ui/Input";
 import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
+
+import { authClient } from "@/lib/auth-client";
 
 const registerSchema = z
   .object({
@@ -29,6 +31,7 @@ const registerSchema = z
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export function RegisterForm() {
+  const router = useRouter();
   const {
     register,
     control,
@@ -45,7 +48,26 @@ export function RegisterForm() {
     },
   });
 
-  async function onSubmit(data: RegisterFormData) {}
+  async function onSubmit(formData: RegisterFormData) {
+    const {} = await authClient.signUp.email(
+      {
+        name: formData.fullName,
+        email: formData.email,
+        password: formData.password,
+        callbackURL: "/login",
+      },
+      {
+        onRequest: (ctx) => {},
+        onSuccess: (ctx) => {
+          console.log("Conta criada com sucesso: ", ctx);
+          router.replace("/login");
+        },
+        onError: (ctx) => {
+          console.log("Erro ao criar conta: ", ctx.error);
+        },
+      },
+    );
+  }
 
   return (
     <div className="flex flex-col justify-center h-full p-8 lg:p-12">
