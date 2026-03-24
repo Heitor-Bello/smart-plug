@@ -62,6 +62,13 @@ export function LoginForm() {
     );
   }
 
+  async function handleSignInWithGoogle() {
+    await authClient.signIn.social({
+      provider: "google",
+      callbackURL: "/",
+    });
+  }
+
   return (
     <div className="flex flex-col h-full">
       <div className="flex-1 flex flex-col justify-center max-w-md mx-auto w-full px-6 lg:px-0">
@@ -149,7 +156,11 @@ export function LoginForm() {
         </div>
 
         {/* Google Button */}
-        <Button variant="outline" className="w-full">
+        <Button
+          variant="outline"
+          className="w-full"
+          onClick={handleSignInWithGoogle}
+        >
           <svg className="w-5 h-5" viewBox="0 0 24 24">
             <path
               fill="currentColor"
