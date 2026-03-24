@@ -48,17 +48,26 @@ src/
 │   │       ├── LoginBrandPanel.tsx
 │   │       └── LoginForm.tsx
 │   │
-│   └── register/            # Pagina de cadastro
-│       ├── page.tsx         # Componente da pagina
-│       └── _components/     # Componentes especificos do cadastro
-│           ├── BrandPanel.tsx
-│           └── RegisterForm.tsx
+│   ├── register/            # Pagina de cadastro
+│   │   ├── page.tsx         # Componente da pagina
+│   │   └── _components/     # Componentes especificos do cadastro
+│   │       ├── BrandPanel.tsx
+│   │       └── RegisterForm.tsx
+│   │
+│   └── profile/             # Pagina de perfil do usuario
+│       ├── page.tsx         # Componente da pagina (protegida)
+│       └── _components/     # Componentes especificos do perfil
+│           ├── ProfileHeader.tsx   # Header com avatar, nome e badges
+│           ├── ProfileForm.tsx     # Formulario de edicao de perfil
+│           └── button-signout.tsx  # Botao de logout
 │
 └── components/
     └── ui/                  # Componentes reutilizaveis
-        ├── Button.tsx       # Botao com variantes (primary, secondary, outline, ghost)
+        ├── Badge.tsx        # Badge com variantes (primary, tertiary, muted)
+        ├── Button.tsx       # Botao com variantes (primary, secondary, outline)
         ├── Checkbox.tsx     # Checkbox com label
-        └── Input.tsx        # Input com icone, label e suporte a senha
+        ├── Input.tsx        # Input com icone, label e suporte a senha
+        └── Select.tsx       # Select dropdown estilizado
 ```
 
 ---
@@ -141,11 +150,12 @@ import { Checkbox } from "@/components/ui/Checkbox";
 
 ## Rotas da Aplicacao
 
-| Rota | Descricao |
-|------|-----------|
-| `/` | Pagina inicial |
-| `/login` | Pagina de login |
-| `/register` | Pagina de cadastro |
+| Rota | Descricao | Protegida |
+|------|-----------|-----------|
+| `/` | Pagina inicial | Nao |
+| `/login` | Pagina de login | Nao |
+| `/register` | Pagina de cadastro | Nao |
+| `/profile` | Pagina de perfil do usuario | Sim (requer sessao) |
 
 ---
 
