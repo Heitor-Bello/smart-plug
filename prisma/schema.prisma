@@ -23,6 +23,7 @@ model User {
   updatedAt     DateTime  @updatedAt
   sessions      Session[]
   accounts      Account[]
+  devices       Device[]
 
   @@unique([email])
   @@map("user")
@@ -74,4 +75,32 @@ model Verification {
 
   @@index([identifier])
   @@map("verification")
+}
+
+// Device (representa cada tomada/ESP32)
+model Device {
+  id          String   @id @default(cuid())
+  name        String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readings    Reading[]
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([userId])
+  @@map("device")
+}
+
+// Reading (cada leitura de sensor)
+model Reading {
+  id        String   @id @default(cuid())
+  current   Float                           // Corrente (A)
+  power     Float                           // Potência (W)
+  energy    Float                           // Energia acumulada (kWh)
+  timestamp DateTime @default(now())        // momento da leitura
+  deviceId  String
+  device    Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)
+
+  @@index([deviceId, timestamp])            // índice composto — essencial para queries por período
+  @@map("reading")
 }

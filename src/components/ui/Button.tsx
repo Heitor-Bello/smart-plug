@@ -29,7 +29,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     return (
       <button
         ref={ref}
-        className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className}`}
+        className={`${baseStyles} ${variants[variant]} ${sizes[size]} ${className} cursor-pointer`}
         {...props}
       >
         {children}
