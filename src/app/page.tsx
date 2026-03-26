@@ -22,6 +22,13 @@ export default function Home() {
             ver perfil
           </a>
         </div>
+
+        <div className="flex gap-2">
+          <span>dispositivos:</span>
+          <a href="/dashboard/devices" className="text-primary hover:underline">
+            ver dispositivos
+          </a>
+        </div>
       </main>
     </div>
   );
