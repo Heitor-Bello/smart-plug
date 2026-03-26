@@ -1,19 +1,28 @@
 import { prisma } from "@/lib/prisma";
 import { NextRequest, NextResponse } from "next/server";
 
-export async function POST(request: NextRequest) {
-  const body = await request.json();
-  const { mac, corrente, potencia, energia } = body;
+export async function POST(
+  request: NextRequest,
+  { params }: { params: Promise<{ deviceId: string }> },
+) {
+  const { deviceId } = await params;
 
-  // Valida MAC
-  if (!mac || typeof mac !== "string") {
+  // Verifica se o device existe
+  const device = await prisma.device.findUnique({
+    where: { id: deviceId },
+  });
+
+  if (!device) {
     return NextResponse.json(
-      { error: "Campo 'mac' é obrigatório" },
-      { status: 400 },
+      { error: "Device não encontrado" },
+      { status: 404 },
     );
   }
 
-  // Valida dados numéricos
+  // Valida o body
+  const body = await request.json();
+  const { corrente, potencia, energia } = body;
+
   if (
     typeof corrente !== "number" ||
     typeof potencia !== "number" ||
@@ -28,7 +37,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Validação de range
+  // Validação de range (evita dados absurdos)
   if (
     corrente < 0 ||
     corrente > 100 ||
@@ -42,28 +51,15 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // Busca ou cria o device pelo MAC address
-  const device = await prisma.device.upsert({
-    where: { macAddress: mac },
-    update: {},
-    create: {
-      macAddress: mac,
-      status: "pending",
-    },
-  });
-
   // Salva a leitura
   const reading = await prisma.reading.create({
     data: {
       current: corrente,
       power: potencia,
       energy: energia,
-      deviceId: device.id,
+      deviceId,
     },
   });
 
-  return NextResponse.json(
-    { id: reading.id, deviceStatus: device.status },
-    { status: 201 },
-  );
+  return NextResponse.json({ id: reading.id }, { status: 201 });
 }

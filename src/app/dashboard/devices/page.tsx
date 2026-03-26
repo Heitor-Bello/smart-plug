@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { DeviceList } from "./_components/device-list";
-import { PendingDevices } from "./_components/pending-devices";
+import { AddDeviceForm } from "./_components/add-device-form";
 
 export default async function DevicesPage() {
   const session = await getServerSession();
@@ -12,12 +12,7 @@ export default async function DevicesPage() {
   }
 
   const devices = await prisma.device.findMany({
-    where: { userId: session.user.id, status: "active" },
-    orderBy: { createdAt: "desc" },
-  });
-
-  const pendingDevices = await prisma.device.findMany({
-    where: { status: "pending", userId: null },
+    where: { userId: session.user.id },
     orderBy: { createdAt: "desc" },
   });
 
@@ -31,7 +26,7 @@ export default async function DevicesPage() {
           </p>
         </div>
 
-        <PendingDevices devices={pendingDevices} />
+        <AddDeviceForm />
 
         <DeviceList devices={devices} />
       </div>

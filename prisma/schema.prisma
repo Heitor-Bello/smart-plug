@@ -80,17 +80,14 @@ model Verification {
 // Device (representa cada tomada/ESP32)
 model Device {
   id          String   @id @default(cuid())
-  macAddress  String   @unique              // MAC address do ESP32 (identificador único de hardware)
-  name        String?                       // nome dado pelo usuário ao vincular
-  status      String   @default("pending")  // "pending" | "active"
-  userId      String?                       // null enquanto não vinculado a um usuário
-  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name        String
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   readings    Reading[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
 
   @@index([userId])
-  @@index([macAddress])
   @@map("device")
 }
 
