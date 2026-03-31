@@ -43,13 +43,13 @@ export function LoginForm() {
       {
         email: formData.email,
         password: formData.password,
-        callbackURL: "/",
+        callbackURL: "/dashboard/devices",
       },
       {
-        onRequest: (ctx) => {},
+        onRequest: (ctx) => { },
         onSuccess: (ctx) => {
           console.log("Login bem-sucedido: ", ctx);
-          router.replace("/");
+          router.replace("/dashboard/devices");
         },
         onError: (ctx) => {
           setAuthError(
@@ -65,7 +65,7 @@ export function LoginForm() {
   async function handleSignInWithGoogle() {
     await authClient.signIn.social({
       provider: "google",
-      callbackURL: "/",
+      callbackURL: "/dashboard/devices",
     });
   }
 

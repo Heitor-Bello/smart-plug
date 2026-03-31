@@ -78,7 +78,7 @@ export function ProfileForm({ defaultValues }: ProfileFormProps) {
   };
 
   const handleCancel = () => {
-    router.replace("/");
+    router.replace("/dashboard/devices");
   };
 
   return (
