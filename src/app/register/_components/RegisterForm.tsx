@@ -136,14 +136,7 @@ export function RegisterForm() {
                   disabled={isSubmitting}
                   label={
                     <>
-                      Ao criar uma conta, você concorda com os{" "}
-                      <Link
-                        href="/terms"
-                        className="text-primary hover:underline"
-                      >
-                        Termos de Serviço
-                      </Link>{" "}
-                      e{" "}
+                      Ao criar uma conta, você concorda com a{" "}                      
                       <Link
                         href="/privacy"
                         className="text-primary hover:underline"

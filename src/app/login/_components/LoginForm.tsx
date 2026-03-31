@@ -95,12 +95,6 @@ export function LoginForm() {
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Senha</span>
-              <Link
-                href="/forgot-password"
-                className="text-sm text-primary hover:underline"
-              >
-                Esqueceu a senha?
-              </Link>
             </div>
             <div className="relative">
               <Input
