@@ -2,7 +2,6 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { ProfileHeader } from "./_components/profile-header";
 import { ProfileForm } from "./_components/profile-form";
-import { ButtonSignOut } from "./_components/button-signout";
 
 export default async function Profile() {
   const session = await getServerSession();
@@ -32,10 +31,6 @@ export default async function Profile() {
             email: user.email ?? "",
           }}
         />
-
-        <div className="flex justify-center pt-4">
-          <ButtonSignOut />
-        </div>
       </div>
     </main>
   );

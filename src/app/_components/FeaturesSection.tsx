@@ -35,9 +35,9 @@ const features = [
         />
       </svg>
     ),
-    title: "Controle Remoto",
+    title: "Aplicação Web e Mobile",
     description:
-      "Ligue ou desligue seus dispositivos de qualquer lugar do mundo usando apenas o seu smartphone.",
+      "Vizualize seus dados de consumo em qualquer lugar, seja no computador ou no celular, com uma interface intuitiva e responsiva.",
   },
   {
     icon: (
@@ -90,8 +90,7 @@ export function FeaturesSection() {
             Como funciona?
           </h2>
           <p className="text-lg text-muted-foreground max-w-2xl mx-auto text-pretty">
-            Uma solução completa para gerenciar o consumo de energia da sua casa
-            ou empresa.
+            Uma solução completa para gerenciar o consumo de energia da sua casa.
           </p>
         </div>
 

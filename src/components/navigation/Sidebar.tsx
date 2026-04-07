@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { ButtonSignOut } from "../button-signout";
 
 interface NavItem {
   label: string;
@@ -100,6 +101,10 @@ export function Sidebar() {
             );
           })}
         </nav>
+
+        <div className="flex justify-center mb-4 px-4">
+          <ButtonSignOut className="w-full" />
+        </div>
 
         {/* Footer */}
         <div className="border-t border-border p-4">

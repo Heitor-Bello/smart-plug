@@ -7,9 +7,9 @@ const steps = [
   },
   {
     step: "02",
-    title: "Configure pelo app",
+    title: "Configure pela aplicação",
     description:
-      "Baixe o aplicativo, crie sua conta e conecte o dispositivo via Wi-Fi em poucos minutos.",
+      "Acesse o aplicativo web, crie sua conta e conecte o dispositivo via Wi-Fi em poucos minutos.",
   },
   {
     step: "03",

@@ -184,9 +184,9 @@ export function LoginForm() {
           <Link href="/privacy" className="hover:text-foreground">
             Privacidade
           </Link>
-          <Link href="/support" className="hover:text-foreground">
+          {/* <Link href="/support" className="hover:text-foreground">
             Suporte
-          </Link>
+          </Link> */}
         </div>
       </footer>
     </div>
