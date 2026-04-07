@@ -140,22 +140,6 @@ O projeto está preparado para deploy na **Vercel**.
 
 ---
 
-## 🧩 Estrutura do projeto
-
-```
-src/
- ├── app/
- ├── components/
- ├── lib/
- │    ├── prisma.ts
- │    └── auth-client.ts
- ├── hooks/
- ├── styles/
- └── utils/
-```
-
----
-
 ## 🔐 Autenticação
 
 O projeto utiliza **Better Auth** com integração ao Prisma.
