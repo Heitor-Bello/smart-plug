@@ -1,8 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { writeFile, mkdir } from "fs/promises";
-import { existsSync } from "fs";
-import path from "path";
-import { randomUUID } from "crypto";
+import { put } from "@vercel/blob";
 import { getServerSession } from "@/lib/session";
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -49,15 +46,13 @@ export async function POST(request: NextRequest) {
   }
 
   const ext = file.type.split("/")[1].replace("jpeg", "jpg");
-  const filename = `${randomUUID()}.${ext}`;
-  const uploadDir = path.join(process.cwd(), "public", "uploads", "avatars");
+  const filename = `avatars/${session.user.id}.${ext}`;
 
-  if (!existsSync(uploadDir)) {
-    await mkdir(uploadDir, { recursive: true });
-  }
+  const blob = await put(filename, buffer, {
+    access: "public",
+    contentType: file.type,
+    allowOverwrite: true,
+  });
 
-  await writeFile(path.join(uploadDir, filename), buffer);
-
-  const url = `/uploads/avatars/${filename}`;
-  return NextResponse.json({ url });
+  return NextResponse.json({ url: blob.url });
 }
