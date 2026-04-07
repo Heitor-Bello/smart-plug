@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { put } from "@vercel/blob";
+import { put, del } from "@vercel/blob";
 import { getServerSession } from "@/lib/session";
 
 const ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif"];
@@ -46,13 +46,18 @@ export async function POST(request: NextRequest) {
   }
 
   const ext = file.type.split("/")[1].replace("jpeg", "jpg");
-  const filename = `avatars/${session.user.id}.${ext}`;
+  const filename = `avatars/${session.user.id}-${Date.now()}.${ext}`;
 
   const blob = await put(filename, buffer, {
     access: "public",
     contentType: file.type,
-    allowOverwrite: true,
   });
+
+  // Delete previous avatar if it was stored in Vercel Blob
+  const oldImage = session.user.image;
+  if (oldImage?.includes(".public.blob.vercel-storage.com")) {
+    await del(oldImage).catch(() => null);
+  }
 
   return NextResponse.json({ url: blob.url });
 }
