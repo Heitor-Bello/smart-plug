@@ -1,3 +1,4 @@
+import { Suspense } from "react";
 import { LoginBrandPanel } from "@/app/login/_components/LoginBrandPanel";
 import { ResetPasswordForm } from "./_components/ResetPasswordForm";
 
@@ -11,7 +12,9 @@ export default function ResetPasswordPage() {
 
       {/* Right Panel - Form */}
       <div className="w-full lg:w-1/2 flex flex-col">
-        <ResetPasswordForm />
+        <Suspense>
+          <ResetPasswordForm />
+        </Suspense>
       </div>
     </main>
   );
