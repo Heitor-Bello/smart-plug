@@ -3,53 +3,7 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState } from "react";
-
-interface NavItem {
-  label: string;
-  href: string;
-  icon: React.ReactNode;
-}
-
-const navItems: NavItem[] = [
-  {
-    label: "Dispositivos",
-    href: "/dashboard/devices",
-    icon: (
-      <svg
-        className="w-5 h-5"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M9 3v2m6-2v2M9 19v2m6-2v2M5 9H3m2 6H3m18-6h-2m2 6h-2M7 19h10a2 2 0 002-2V7a2 2 0 00-2-2H7a2 2 0 00-2 2v10a2 2 0 002 2zM9 9h6v6H9V9z"
-        />
-      </svg>
-    ),
-  },
-  {
-    label: "Perfil",
-    href: "/dashboard/profile",
-    icon: (
-      <svg
-        className="w-5 h-5"
-        fill="none"
-        stroke="currentColor"
-        viewBox="0 0 24 24"
-      >
-        <path
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          strokeWidth={2}
-          d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"
-        />
-      </svg>
-    ),
-  },
-];
+import { navItems } from "./nav-items";
 
 export function MobileNav() {
   const pathname = usePathname();
@@ -123,33 +77,31 @@ export function MobileNav() {
         />
       )}
 
-      {/* Mobile Menu */}
-      <nav
-        className={`fixed top-16 left-0 right-0 z-50 border-b border-border bg-card transition-transform duration-200 lg:hidden ${
-          isOpen ? "translate-y-0" : "-translate-y-full"
-        }`}
-      >
-        <div className="space-y-1 px-4 py-3">
-          {navItems.map((item) => {
-            const isActive = pathname === item.href;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                onClick={() => setIsOpen(false)}
-                className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
-                  isActive
-                    ? "bg-primary/10 text-primary"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
-                }`}
-              >
-                {item.icon}
-                {item.label}
-              </Link>
-            );
-          })}
-        </div>
-      </nav>
+      {/* Mobile Menu Dropdown */}
+      {isOpen && (
+        <nav className="fixed top-16 left-0 right-0 z-50 border-b border-border bg-card shadow-lg lg:hidden">
+          <div className="space-y-1 px-4 py-3">
+            {navItems.map((item) => {
+              const isActive = pathname === item.href;
+              return (
+                <Link
+                  key={item.href}
+                  href={item.href}
+                  onClick={() => setIsOpen(false)}
+                  className={`flex items-center gap-3 rounded-lg px-3 py-2.5 text-sm font-medium transition-colors ${
+                    isActive
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  }`}
+                >
+                  {item.icon}
+                  {item.label}
+                </Link>
+              );
+            })}
+          </div>
+        </nav>
+      )}
     </>
   );
 }
