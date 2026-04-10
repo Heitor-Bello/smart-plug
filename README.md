@@ -129,8 +129,8 @@ O arquivo `src/app/dashboard/layout.tsx` valida a sessao no servidor. Se nao hou
 
 Dentro do dashboard existem hoje estas areas:
 
-- `/dashboard`: rota existente, mas ainda placeholder
-- `/dashboard/devices`: lista e cadastro de dispositivos do usuario autenticado
+- `/dashboard`: painel principal com cards de metricas e leituras em tempo real
+- `/dashboard/devices`: lista, cadastro, edicao e remocao de dispositivos do usuario autenticado
 - `/dashboard/profile`: visualizacao e edicao basica do perfil
 
 ### 3. Camada de API
@@ -150,6 +150,18 @@ Essa rota delega o tratamento completo ao Better Auth via `toNextJsHandler(auth)
 
 - `POST /api/devices`
 	Cria um novo dispositivo para o usuario autenticado.
+
+- `PATCH /api/devices/[deviceId]`
+	Renomeia um dispositivo. Valida ownership pelo userId da sessao.
+
+- `DELETE /api/devices/[deviceId]`
+	Remove o dispositivo e todas as leituras associadas via cascade.
+
+#### Dashboard em tempo real
+
+- `GET /api/dashboard`
+	Retorna os dispositivos do usuario com a ultima leitura de cada um, alem de agregados: potencia total, corrente total, energia acumulada e contagem de dispositivos ativos.
+	Usado pelo polling automatico do lado do cliente.
 
 #### Leituras de energia
 
@@ -269,6 +281,10 @@ O usuario pode:
 - listar os dispositivos vinculados a propria conta
 - cadastrar um novo dispositivo informando apenas o nome
 - copiar o ID do dispositivo para uso externo
+- renomear um dispositivo com confirmacao inline
+- deletar um dispositivo (requer confirmacao para evitar exclusoes acidentais)
+
+A exclusao remove o dispositivo e todas as leituras associadas no banco via cascade.
 
 Esse ID e importante porque o endpoint de leituras usa o `deviceId` diretamente na URL.
 
@@ -301,7 +317,33 @@ O usuario pode:
 
 O e-mail esta visivel, mas bloqueado para edicao na interface atual.
 
-### 8. Upload de avatar
+### 8. Dashboard principal com leituras em tempo real
+
+Implementado em `/dashboard` com arquitetura hibrida SSR + polling no cliente.
+
+A pagina renderiza os dados iniciais no servidor (SSR) e os passa como `initialData` para um client component (`DashboardLive`) que faz polling a cada 3 segundos na rota `GET /api/dashboard`.
+
+O dashboard exibe:
+
+**Cards de resumo:**
+
+- Potencia Total (W): soma da potencia instantanea de todos os dispositivos
+- Corrente Total (A): soma da corrente de todos os dispositivos
+- Energia Acumulada (kWh): soma da energia registrada
+- Dispositivos Ativos: quantidade de dispositivos com pelo menos uma leitura registrada
+
+**Cards por dispositivo:**
+
+- Nome e ID do dispositivo
+- Badge de status (Ativo / Sem dados)
+- Ultima leitura de potencia, corrente e energia
+- Ha quanto tempo foi a ultima leitura
+
+Um indicador visual pulsante confirma que o polling esta ativo. O horario da ultima atualizacao e exibido apos o primeiro ciclo de polling para evitar erro de hidratacao entre servidor e cliente.
+
+Erros de rede sao tratados silenciosamente: o ultimo dado valido continua visivel.
+
+### 9. Upload de avatar
 
 O fluxo de avatar faz:
 
@@ -320,9 +362,11 @@ src/
 	app/
 		api/
 			auth/
+			dashboard/
 			devices/
 			upload/
 		dashboard/
+			_components/
 			devices/
 			profile/
 		forgot-password/
