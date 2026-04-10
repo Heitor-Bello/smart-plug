@@ -327,21 +327,30 @@ O dashboard exibe:
 
 **Cards de resumo:**
 
-- Potencia Total (W): soma da potencia instantanea de todos os dispositivos
-- Corrente Total (A): soma da corrente de todos os dispositivos
-- Energia Acumulada (kWh): soma da energia registrada
-- Dispositivos Ativos: quantidade de dispositivos com pelo menos uma leitura registrada
+- Potencia Total (W): soma da potencia instantanea dos dispositivos com leitura recente (ultimos 60s)
+- Corrente Total (A): soma da corrente dos dispositivos com leitura recente (ultimos 60s)
+- Energia Acumulada (kWh): soma da energia registrada de todos os dispositivos, independente do tempo
+- Dispositivos Ativos: quantidade de dispositivos com leitura nos ultimos 60s
 
 **Cards por dispositivo:**
 
 - Nome e ID do dispositivo
-- Badge de status (Ativo / Sem dados)
-- Ultima leitura de potencia, corrente e energia
+- Badge de status: **Ativo** (verde, leitura <= 60s), **Offline** (vermelho, leitura > 60s) ou **Sem dados** (cinza, nenhuma leitura)
+- Potencia e corrente zeradas automaticamente quando a ultima leitura tiver mais de 60s (dispositivo provavelmente desligado)
+- Energia acumulada sempre exibida, independente do tempo da ultima leitura
 - Ha quanto tempo foi a ultima leitura
 
 Um indicador visual pulsante confirma que o polling esta ativo. O horario da ultima atualizacao e exibido apos o primeiro ciclo de polling para evitar erro de hidratacao entre servidor e cliente.
 
 Erros de rede sao tratados silenciosamente: o ultimo dado valido continua visivel.
+
+**Deteccao de dispositivo offline:**
+
+Um limiar de 60 segundos e aplicado tanto na API quanto no componente de card. Se a ultima leitura de um dispositivo for mais antiga que esse limiar:
+
+- Na API: potencia e corrente nao entram nos totais do sumario; o dispositivo nao e contado como ativo
+- No card: potencia e corrente exibem 0; o badge muda de Ativo para Offline
+- Energia nunca e zerada por ser um valor acumulado
 
 ### 9. Upload de avatar
 

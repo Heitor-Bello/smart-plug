@@ -29,11 +29,20 @@ function timeAgo(date: Date): string {
   return `há ${days} dia${days > 1 ? "s" : ""}`;
 }
 
+const STALE_MS = 60 * 1000;
+
 export function DeviceReadingCard({
   device,
   latestReading,
 }: DeviceReadingCardProps) {
-  const isActive = latestReading !== null;
+  const hasReading = latestReading !== null;
+  const isStale =
+    hasReading &&
+    Date.now() - new Date(latestReading.timestamp).getTime() >= STALE_MS;
+  const isActive = hasReading && !isStale;
+
+  const displayPower = isStale ? 0 : (latestReading?.power ?? 0);
+  const displayCurrent = isStale ? 0 : (latestReading?.current ?? 0);
 
   return (
     <div className="rounded-xl border border-border bg-card p-6 space-y-4">
@@ -49,29 +58,31 @@ export function DeviceReadingCard({
           className={`flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-full shrink-0 ${
             isActive
               ? "text-success bg-success/10"
-              : "text-muted-foreground bg-muted"
+              : isStale
+                ? "text-destructive bg-destructive/10"
+                : "text-muted-foreground bg-muted"
           }`}
         >
           {isActive ? <Wifi size={12} /> : <WifiOff size={12} />}
-          {isActive ? "Ativo" : "Sem dados"}
+          {isActive ? "Ativo" : isStale ? "Offline" : "Sem dados"}
         </span>
       </div>
 
       {/* Readings */}
-      {latestReading ? (
+      {hasReading ? (
         <>
           <div className="grid grid-cols-3 gap-3">
             <ReadingMetric
               icon={<Zap size={14} />}
               label="Potência"
-              value={latestReading.power.toFixed(1)}
+              value={displayPower.toFixed(1)}
               unit="W"
               color="primary"
             />
             <ReadingMetric
               icon={<Activity size={14} />}
               label="Corrente"
-              value={latestReading.current.toFixed(2)}
+              value={displayCurrent.toFixed(2)}
               unit="A"
               color="warning"
             />
