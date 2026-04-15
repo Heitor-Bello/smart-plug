@@ -27,11 +27,11 @@ interface DashboardData {
   activeDevices: number;
 }
 
-const POLL_INTERVAL = 3000;
+const POLL_INTERVAL = 1000;
 
 export function DashboardLive({ initialData }: { initialData: DashboardData }) {
   const [data, setData] = useState<DashboardData>(initialData);
-  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [now, setNow] = useState<Date>(new Date());
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
   async function fetchData() {
@@ -40,7 +40,7 @@ export function DashboardLive({ initialData }: { initialData: DashboardData }) {
       if (!res.ok) return;
       const json: DashboardData = await res.json();
       setData(json);
-      setLastUpdated(new Date());
+      setNow(new Date());
     } catch {
       // silently ignore network errors — keeps showing last good data
     }
@@ -64,10 +64,8 @@ export function DashboardLive({ initialData }: { initialData: DashboardData }) {
           <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
         </span>
         <span className="text-xs text-muted-foreground">
-          Atualização automática a cada 3s
-          {lastUpdated && (
-            <> &mdash; última às {lastUpdated.toLocaleTimeString("pt-BR")}</>
-          )}
+          Atualização automática a cada 1s
+          <> &mdash; {now.toLocaleTimeString("pt-BR")}</>
         </span>
       </div>
 

@@ -20,7 +20,8 @@ export async function GET() {
     orderBy: { createdAt: "desc" },
   });
 
-  const STALE_MS = 60 * 1000;
+  // TODO: Alterar após apresentação 60 * 1000
+  const STALE_MS = 10 * 1000;
 
   const latestReadings = devices
     .map((d) => d.readings[0])

@@ -11,7 +11,7 @@ export default function PrivacyPage() {
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       <div className="max-w-3xl mx-auto w-full px-6 py-12 flex-1">
         <Link
-          href="/register"
+          href="/"
           className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors mb-8"
         >
           <ArrowLeft size={18} />

@@ -12,6 +12,7 @@ import { Button } from "@/components/ui/Button";
 import { Checkbox } from "@/components/ui/Checkbox";
 
 import { authClient } from "@/lib/auth-client";
+import { useState } from "react";
 
 const registerSchema = z
   .object({
@@ -31,6 +32,7 @@ const registerSchema = z
 type RegisterFormData = z.infer<typeof registerSchema>;
 
 export function RegisterForm() {
+  const [authError, setAuthError] = useState<string | null>(null);
   const router = useRouter();
   const {
     register,
@@ -49,6 +51,8 @@ export function RegisterForm() {
   });
 
   async function onSubmit(formData: RegisterFormData) {
+    setAuthError(null);
+
     const {} = await authClient.signUp.email(
       {
         name: formData.fullName,
@@ -64,6 +68,11 @@ export function RegisterForm() {
         },
         onError: (ctx) => {
           console.log("Erro ao criar conta: ", ctx.error);
+          setAuthError(
+            ctx.error.code === "USER_ALREADY_EXISTS_USE_ANOTHER_EMAIL"
+              ? "Já existe uma conta com este e-mail"
+              : "Erro ao criar conta",
+          )
         },
       },
     );
@@ -156,6 +165,12 @@ export function RegisterForm() {
               </p>
             )}
           </div>
+
+          {authError && (
+            <p className="text-sm text-destructive bg-destructive/10 px-4 py-3 rounded-lg">
+              {authError}
+            </p>
+          )}
 
           <Button type="submit" className="w-full mt-6" disabled={isSubmitting}>
             {isSubmitting ? (

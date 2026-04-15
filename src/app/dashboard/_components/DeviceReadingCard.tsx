@@ -29,7 +29,8 @@ function timeAgo(date: Date): string {
   return `há ${days} dia${days > 1 ? "s" : ""}`;
 }
 
-const STALE_MS = 60 * 1000;
+// TODO: Alterar após apresentação 60 * 1000
+const STALE_MS = 10 * 1000;
 
 export function DeviceReadingCard({
   device,

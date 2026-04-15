@@ -11,9 +11,6 @@ export default async function Profile() {
   }
 
   const user = session.user;
-  const nameParts = user.name?.split(" ") ?? [""];
-  const firstName = nameParts[0] ?? "";
-  const lastName = nameParts.slice(nameParts.length - 1).join(" ") ?? "";
 
   return (
     <main className="min-h-screen bg-background py-8 px-4">
@@ -26,8 +23,7 @@ export default async function Profile() {
 
         <ProfileForm
           defaultValues={{
-            firstName,
-            lastName,
+            name: user.name ?? "",
             email: user.email ?? "",
           }}
         />

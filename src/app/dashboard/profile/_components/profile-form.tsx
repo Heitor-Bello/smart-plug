@@ -11,19 +11,14 @@ import { Button } from "@/components/ui/Button";
 import { authClient } from "@/lib/auth-client";
 
 const profileSchema = z.object({
-  firstName: z.string().trim().min(2, "Nome deve ter no mínimo 2 caracteres"),
-  lastName: z
-    .string()
-    .trim()
-    .min(2, "Sobrenome deve ter no mínimo 2 caracteres"),
+  name: z.string().trim().min(2, "Nome deve ter no mínimo 2 caracteres"),
 });
 
 type ProfileFormData = z.infer<typeof profileSchema>;
 
 interface ProfileFormProps {
   defaultValues?: {
-    firstName: string;
-    lastName: string;
+    name: string;
     email: string;
   };
 }
@@ -41,8 +36,7 @@ export function ProfileForm({ defaultValues }: ProfileFormProps) {
   } = useForm<ProfileFormData>({
     resolver: zodResolver(profileSchema),
     defaultValues: {
-      firstName: defaultValues?.firstName ?? "",
-      lastName: defaultValues?.lastName ?? "",
+      name: defaultValues?.name ?? "",
     },
   });
 
@@ -51,14 +45,10 @@ export function ProfileForm({ defaultValues }: ProfileFormProps) {
     setSaveSuccess(null);
     setIsSubmitting(true);
 
-    const fullName = `${data.firstName} ${data.lastName}`
-      .replace(/\s+/g, " ")
-      .trim();
-
     try {
       await authClient.updateUser(
         {
-          name: fullName,
+          name: data.name.replace(/\s+/g, " ").trim(),
         },
         {
           onSuccess: () => {
@@ -92,41 +82,22 @@ export function ProfileForm({ defaultValues }: ProfileFormProps) {
       </div>
 
       <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
-        {/* Nome e Sobrenome */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div className="flex flex-col gap-2">
-            <label className="text-xs text-muted-foreground uppercase tracking-wider">
-              Nome
-            </label>
-            <input
-              {...register("firstName")}
-              disabled={isSubmitting}
-              className="w-full rounded-lg border border-border bg-input px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Digite seu nome"
-            />
-            {errors.firstName && (
-              <span className="text-sm text-destructive">
-                {errors.firstName.message}
-              </span>
-            )}
-          </div>
-
-          <div className="flex flex-col gap-2">
-            <label className="text-xs text-muted-foreground uppercase tracking-wider">
-              Sobrenome
-            </label>
-            <input
-              {...register("lastName")}
-              disabled={isSubmitting}
-              className="w-full rounded-lg border border-border bg-input px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
-              placeholder="Digite seu sobrenome"
-            />
-            {errors.lastName && (
-              <span className="text-sm text-destructive">
-                {errors.lastName.message}
-              </span>
-            )}
-          </div>
+        {/* Nome Completo */}
+        <div className="flex flex-col gap-2">
+          <label className="text-xs text-muted-foreground uppercase tracking-wider">
+            Nome Completo
+          </label>
+          <input
+            {...register("name")}
+            disabled={isSubmitting}
+            className="w-full rounded-lg border border-border bg-input px-4 py-3 text-foreground focus:outline-none focus:ring-2 focus:ring-ring"
+            placeholder="Digite seu nome completo"
+          />
+          {errors.name && (
+            <span className="text-sm text-destructive">
+              {errors.name.message}
+            </span>
+          )}
         </div>
 
         {/* E-mail (readonly) */}
