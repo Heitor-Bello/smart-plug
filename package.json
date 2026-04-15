@@ -13,6 +13,8 @@
     "@hookform/resolvers": "^5.2.2",
     "@prisma/adapter-pg": "^7.5.0",
     "@prisma/client": "^6.19.2",
+    "@react-email/components": "^1.0.12",
+    "@react-email/render": "^2.0.6",
     "@vercel/blob": "^2.3.3",
     "better-auth": "^1.5.5",
     "dotenv": "^17.3.1",

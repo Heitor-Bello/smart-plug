@@ -2,6 +2,8 @@ import { betterAuth } from "better-auth";
 import { prisma } from "./prisma";
 import { prismaAdapter } from "better-auth/adapters/prisma";
 import { resend } from "./resend";
+import { ResetPasswordEmail } from "@/emails/reset-password";
+import { render } from "@react-email/render";
 
 export const auth = betterAuth({
   database: prismaAdapter(prisma, {
@@ -13,19 +15,17 @@ export const auth = betterAuth({
     revokeSessionsOnPasswordReset: true,
 
     async sendResetPassword({ user, url }) {
+      const html = await render(
+        ResetPasswordEmail({
+          userName: user.name ?? user.email,
+          resetUrl: url,
+        })
+      );
       await resend.emails.send({
         from: "Smart Plug <onboarding@resend.dev>",
         to: user.email,
-        subject: "Redefinição de senha",
-        html: `
-          <div>
-            <h2>Recuperação de senha</h2>
-            <p>Você solicitou a redefinição da sua senha.</p>
-            <p>
-              <a href="${url}">Clique aqui para redefinir sua senha</a>
-            </p>
-          </div>
-        `,
+        subject: "Redefinição de senha — Smart Plug",
+        html,
       });
     },
 
