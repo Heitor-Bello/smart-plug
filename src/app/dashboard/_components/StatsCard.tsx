@@ -42,7 +42,7 @@ export function StatsCard({
   const colors = colorMap[color];
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+    <div className="rounded-xl border border-border bg-card p-6 space-y-4 hover:border-primary ease-in-out duration-200">
       <div className="flex items-center justify-between">
         <p className="text-sm font-medium text-muted-foreground">{title}</p>
         <div className={`p-2 rounded-lg ${colors.icon}`}>{icon}</div>

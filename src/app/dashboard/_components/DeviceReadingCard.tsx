@@ -46,7 +46,7 @@ export function DeviceReadingCard({
   const displayCurrent = isStale ? 0 : (latestReading?.current ?? 0);
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6 space-y-4">
+    <div className="rounded-xl border border-border bg-card p-6 space-y-4 hover:border-primary ease-in-out duration-200">
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">

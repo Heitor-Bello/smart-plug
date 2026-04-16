@@ -19,6 +19,7 @@ model User {
   email         String
   emailVerified Boolean   @default(false)
   image         String?
+  tariff        Float     @default(0)        // Tarifa de energia (R$/kWh)
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
   sessions      Session[]

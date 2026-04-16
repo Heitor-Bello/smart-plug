@@ -9,16 +9,22 @@ export async function GET() {
     return NextResponse.json({ error: "Não autenticado" }, { status: 401 });
   }
 
-  const devices = await prisma.device.findMany({
-    where: { userId: session.user.id },
-    include: {
-      readings: {
-        orderBy: { timestamp: "desc" },
-        take: 1,
+  const [devices, user] = await Promise.all([
+    prisma.device.findMany({
+      where: { userId: session.user.id },
+      include: {
+        readings: {
+          orderBy: { timestamp: "desc" },
+          take: 1,
+        },
       },
-    },
-    orderBy: { createdAt: "desc" },
-  });
+      orderBy: { createdAt: "desc" },
+    }),
+    prisma.user.findUniqueOrThrow({
+      where: { id: session.user.id },
+      select: { tariff: true },
+    }),
+  ]);
 
   // TODO: Alterar após apresentação 60 * 1000
   const STALE_MS = 10 * 1000;
@@ -42,5 +48,6 @@ export async function GET() {
     totalCurrent,
     totalEnergy,
     activeDevices,
+    tariff: user.tariff,
   });
 }

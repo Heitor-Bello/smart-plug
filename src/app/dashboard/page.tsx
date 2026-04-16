@@ -5,7 +5,8 @@ import { DashboardLive } from "./_components/DashboardLive";
 export default async function DashboardPage() {
   const session = await getServerSession();
 
-  const devices = await prisma.device.findMany({
+  const [devices, user] = await Promise.all([
+    prisma.device.findMany({
     where: { userId: session!.user.id },
     include: {
       readings: {
@@ -14,7 +15,12 @@ export default async function DashboardPage() {
       },
     },
     orderBy: { createdAt: "desc" },
-  });
+    }),
+    prisma.user.findUniqueOrThrow({
+      where: { id: session!.user.id },
+      select: { tariff: true },
+    }),
+  ]);
 
   // TODO: Alterar após apresentação 60 * 1000
   const STALE_MS = 10 * 1000;
@@ -50,6 +56,7 @@ export default async function DashboardPage() {
             totalCurrent,
             totalEnergy,
             activeDevices,
+            tariff: user.tariff,
           }}
         />
       </div>
