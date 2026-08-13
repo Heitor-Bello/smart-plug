@@ -7,9 +7,10 @@ export async function POST(
 ) {
   const { deviceId } = await params;
 
-  // Verifica se o device existe
+  // Verifica se o device existe e busca o usuário
   const device = await prisma.device.findUnique({
     where: { id: deviceId },
+    include: { user: { select: { tariff: true } } },
   });
 
   if (!device) {
@@ -21,7 +22,7 @@ export async function POST(
 
   // Valida o body
   const body = await request.json();
-  const { corrente, potencia, energia } = body;
+  const { corrente, potencia, energia, rele } = body;
 
   if (
     typeof corrente !== "number" ||
@@ -51,15 +52,28 @@ export async function POST(
     );
   }
 
+  // Calcula o custo com base na tarifa do usuário
+  const custo = energia * device.user.tariff;
+
   // Salva a leitura
   const reading = await prisma.reading.create({
     data: {
       current: corrente,
       power: potencia,
       energy: energia,
+      cost: custo,
+      relayOn: typeof rele === "boolean" ? rele : true,
       deviceId,
     },
   });
+
+  // Se o status do relé foi enviado, atualiza no device também
+  if (typeof rele === "boolean") {
+    await prisma.device.update({
+      where: { id: deviceId },
+      data: { relayStatus: rele },
+    });
+  }
 
   return NextResponse.json({ id: reading.id }, { status: 201 });
 }

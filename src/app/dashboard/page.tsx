@@ -7,14 +7,14 @@ export default async function DashboardPage() {
 
   const [devices, user] = await Promise.all([
     prisma.device.findMany({
-    where: { userId: session!.user.id },
-    include: {
-      readings: {
-        orderBy: { timestamp: "desc" },
-        take: 1,
+      where: { userId: session!.user.id },
+      include: {
+        readings: {
+          orderBy: { timestamp: "desc" },
+          take: 1,
+        },
       },
-    },
-    orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "desc" },
     }),
     prisma.user.findUniqueOrThrow({
       where: { id: session!.user.id },

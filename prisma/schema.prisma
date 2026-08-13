@@ -84,6 +84,7 @@ model Device {
   name        String
   userId      String
   user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  relayStatus Boolean  @default(true)       // Status do relé (true = ligado, false = desligado)
   readings    Reading[]
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
@@ -98,6 +99,8 @@ model Reading {
   current   Float                           // Corrente (A)
   power     Float                           // Potência (W)
   energy    Float                           // Energia acumulada (kWh)
+  cost      Float    @default(0)            // Custo estimado (R$)
+  relayOn   Boolean  @default(true)         // Status do relé no momento da leitura
   timestamp DateTime @default(now())        // momento da leitura
   deviceId  String
   device    Device   @relation(fields: [deviceId], references: [id], onDelete: Cascade)

@@ -1,5 +1,5 @@
-import { ReactNode } from "react";
-import { Activity, Battery, Zap, Wifi, WifiOff } from "lucide-react";
+import { ReactNode, useState } from "react";
+import { Activity, Battery, Zap, Wifi, WifiOff, Loader2, Power } from "lucide-react";
 
 interface Reading {
   current: number;
@@ -11,6 +11,7 @@ interface Reading {
 interface Device {
   id: string;
   name: string;
+  relayStatus: boolean;
 }
 
 interface DeviceReadingCardProps {
@@ -36,6 +37,10 @@ export function DeviceReadingCard({
   device,
   latestReading,
 }: DeviceReadingCardProps) {
+  const [relayStatus, setRelayStatus] = useState(device.relayStatus);
+  const [isTogglingRelay, setIsTogglingRelay] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
   const hasReading = latestReading !== null;
   const isStale =
     hasReading &&
@@ -44,6 +49,31 @@ export function DeviceReadingCard({
 
   const displayPower = isStale ? 0 : (latestReading?.power ?? 0);
   const displayCurrent = isStale ? 0 : (latestReading?.current ?? 0);
+
+  async function toggleRelay() {
+    setIsTogglingRelay(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/devices/${device.id}/control`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ ligado: !relayStatus }),
+      });
+      
+      if (!res.ok) {
+        const data = await res.json();
+        setError(data.error ?? "Erro ao controlar relé");
+        return;
+      }
+
+      const data = await res.json();
+      setRelayStatus(data.ligado);
+    } catch {
+      setError("Erro de conexão");
+    } finally {
+      setIsTogglingRelay(false);
+    }
+  }
 
   return (
     <div className="rounded-xl border border-border bg-card p-6 space-y-4 hover:border-primary ease-in-out duration-200">
@@ -106,6 +136,39 @@ export function DeviceReadingCard({
           </p>
         </div>
       )}
+
+      {/* Relay Control */}
+      <div className="pt-2 border-t border-border space-y-2">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Power size={14} className={relayStatus ? "text-success" : "text-muted-foreground"} />
+            <span className="text-xs font-medium">
+              Relé: <span className={relayStatus ? "text-success" : "text-destructive"}>
+                {relayStatus ? "LIGADO" : "DESLIGADO"}
+              </span>
+            </span>
+          </div>
+        </div>
+
+        {error && <p className="text-xs text-destructive">{error}</p>}
+
+        <button
+          onClick={toggleRelay}
+          disabled={isTogglingRelay}
+          className={`w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg text-sm font-medium transition-colors disabled:opacity-50 ${
+            relayStatus
+              ? "bg-destructive text-destructive-foreground hover:opacity-90"
+              : "bg-success text-success-foreground hover:opacity-90"
+          }`}
+        >
+          {isTogglingRelay ? (
+            <Loader2 size={14} className="animate-spin" />
+          ) : (
+            <Power size={14} />
+          )}
+          {isTogglingRelay ? "Processando..." : relayStatus ? "Desligar" : "Ligar"}
+        </button>
+      </div>
     </div>
   );
 }
