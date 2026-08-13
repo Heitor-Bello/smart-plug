@@ -16,6 +16,7 @@ interface Reading {
 interface Device {
   id: string;
   name: string;
+  relayStatus: boolean;
   readings: Reading[];
 }
 
