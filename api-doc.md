@@ -65,6 +65,66 @@ Retorna os dados consolidados do dashboard para o usuário autenticado: lista de
 
 ---
 
+## Relatórios
+
+### `GET /api/reports`
+
+Retorna a série histórica agregada de consumo de um ou de todos os dispositivos do usuário autenticado, usada pela tela `/dashboard/reports` para os gráficos de potência e energia por período.
+
+**Autenticação:** obrigatória
+
+**Query params**
+| Parâmetro | Tipo   | Obrigatório | Valores aceitos                        | Descrição                                                        |
+|-----------|--------|-------------|-----------------------------------------|-------------------------------------------------------------------|
+| deviceId  | string | não         | id de um device do usuário, ou `all`    | Filtra por um dispositivo específico. Ausente ou `all` = todos os dispositivos do usuário |
+| range     | string | não         | `24h` \| `7d` \| `30d` (default `24h`)  | Janela de tempo consultada                                        |
+
+Cada `range` usa um tamanho de bucket fixo para agregação, mantendo o número de pontos do gráfico controlado independente do período:
+
+| range | janela   | tamanho do bucket | nº de pontos (aprox.) |
+|-------|----------|--------------------|------------------------|
+| 24h   | 24 horas | 5 minutos          | 288                    |
+| 7d    | 7 dias   | 1 hora             | 168                    |
+| 30d   | 30 dias  | 1 dia              | 30                     |
+
+Dentro de cada bucket, `power` e `current` são a média das leituras cruas naquele intervalo. `energy` e `cost` são a diferença entre a última e a primeira leitura do bucket, já que ambos os campos são cumulativos por leitura (não valores instantâneos). Deltas negativos — por exemplo quando um dispositivo reinicia e a energia acumulada volta a zero — são zerados.
+
+**Resposta `200`**
+```json
+{
+  "devices": [
+    { "id": "cuid", "name": "Tomada Sala" }
+  ],
+  "series": [
+    {
+      "timestamp": "2026-08-29T16:00:00.000Z",
+      "power": 98.18,
+      "current": 0.446,
+      "energy": 0.0046,
+      "cost": 0.0034
+    }
+  ],
+  "summary": {
+    "totalEnergy": 2.29,
+    "totalCost": 1.72,
+    "avgPower": 88.18,
+    "peakPower": 133.87,
+    "peakPowerAt": "2026-08-29T02:14:58.868Z",
+    "readingsCount": 521
+  }
+}
+```
+
+> **Nota:** `summary.totalEnergy` e `summary.totalCost` são calculados a partir da primeira e da última leitura de cada dispositivo dentro do range completo (não a soma dos buckets), para não perder consumo nas bordas dos buckets.
+
+**Erros**
+| Status | Motivo                                       |
+|--------|-----------------------------------------------|
+| 401    | Não autenticado                                |
+| 404    | `deviceId` informado não pertence ao usuário   |
+
+---
+
 ## Dispositivos
 
 ### `GET /api/devices`

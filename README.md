@@ -131,6 +131,7 @@ Dentro do dashboard existem hoje estas areas:
 
 - `/dashboard`: painel principal com cards de metricas e leituras em tempo real
 - `/dashboard/devices`: lista, cadastro, edicao e remocao de dispositivos do usuario autenticado
+- `/dashboard/reports`: historico de consumo por periodo (24h/7d/30d) e por dispositivo, com graficos de potencia e energia
 - `/dashboard/profile`: visualizacao e edicao basica do perfil
 
 ### 3. Camada de API
@@ -187,6 +188,15 @@ Mapeamento para o banco:
 - `rele` (opcional) -> `Reading.relayOn` e tambem atualiza `Device.relayStatus`
 
 O custo da leitura (`Reading.cost`) e calculado no servidor como `energia * tarifa do usuario`.
+
+#### Relatorios
+
+- `GET /api/reports`
+	Retorna a serie historica agregada de consumo (potencia, corrente, energia, custo) de um dispositivo especifico ou de todos os dispositivos do usuario autenticado, alem de um resumo do periodo (energia total, custo total, potencia media, pico de potencia).
+
+Aceita os query params `deviceId` (id de um device do usuario, ou `all`/ausente para todos) e `range` (`24h`, `7d` ou `30d`, default `24h`).
+
+As leituras cruas sao agregadas em buckets de tamanho fixo por range, para manter o numero de pontos do grafico controlado: 5 min para `24h` (~288 pontos), 1 hora para `7d` (~168 pontos) e 1 dia para `30d` (~30 pontos). Dentro de cada bucket, potencia e corrente sao a media das leituras; energia e custo sao a diferenca entre a ultima e a primeira leitura do bucket, ja que ambos os campos sao cumulativos por leitura.
 
 #### Controle do rele
 
@@ -396,6 +406,22 @@ O fluxo de avatar faz:
 - remocao do avatar anterior quando aplicavel
 - atualizacao do campo `image` do usuario no Better Auth
 
+### 12. Historico e relatorios de consumo
+
+Implementado em `/dashboard/reports`, usando a API `GET /api/reports`.
+
+O usuario pode:
+
+- filtrar por dispositivo especifico ou ver todos os dispositivos somados
+- escolher o periodo: ultimas 24h, ultimos 7 dias ou ultimos 30 dias
+- ver cards de resumo do periodo: energia consumida, custo estimado, potencia media e pico de potencia (com data/hora do pico)
+- ver um grafico de area com a potencia media ao longo do tempo
+- ver um grafico de barras com a energia consumida por bucket de tempo
+
+As leituras cruas sao agregadas no servidor em buckets (5 min / 1 hora / 1 dia, conforme o periodo) para manter o grafico legivel e o payload pequeno, mesmo com leituras chegando a cada 1 segundo. Energia e custo do periodo sao calculados pela diferenca entre a primeira e a ultima leitura de cada dispositivo no intervalo (ambos os campos sao cumulativos), com protecao contra valores negativos quando um dispositivo reinicia e sua energia acumulada volta a zero.
+
+> **Nota de escala:** a agregacao hoje e feita em memoria (busca as leituras cruas do periodo via Prisma e agrupa em JS), o que e adequado para o volume atual do projeto. Se o numero de leituras crescer muito, o proximo passo seria mover essa agregacao para o banco (SQL com `date_trunc`/bucket), evitando trazer todas as leituras cruas para a aplicacao.
+
 ## Estrutura do Projeto
 
 ```text
@@ -405,10 +431,12 @@ src/
 			auth/
 			dashboard/
 			devices/
+			reports/
 			upload/
 		dashboard/
 			_components/
 			devices/
+			reports/
 			profile/
 		forgot-password/
 		login/
@@ -487,7 +515,7 @@ npm run lint
 
 ## Estado Atual do Projeto
 
-O projeto ja possui uma base funcional completa: autenticacao, gerenciamento de dispositivos, ingestao de leituras, dashboard em tempo real, controle remoto do rele e calculo de custo por tarifa.
+O projeto ja possui uma base funcional completa: autenticacao, gerenciamento de dispositivos, ingestao de leituras, dashboard em tempo real, controle remoto do rele, calculo de custo por tarifa e relatorios de consumo por periodo.
 
 Pontos importantes do estado atual:
 
@@ -497,7 +525,8 @@ Pontos importantes do estado atual:
 - o recebimento de leituras esta funcional no banco, incluindo custo e status do rele
 - a pagina `/dashboard` exibe metricas agregadas e por dispositivo, com polling em tempo real
 - o controle remoto do rele (ligar/desligar) esta funcional entre dashboard, API e firmware
-- ainda nao existe tela para visualizar historico de leituras (series temporais, graficos por periodo)
+- a pagina `/dashboard/reports` exibe historico de consumo (potencia e energia) por periodo e por dispositivo, com agregacao em buckets feita no servidor
+- ainda nao existe intervalo de datas customizado nem exportacao dos relatorios (hoje sao apenas os presets 24h/7d/30d)
 
 ## Observacoes Tecnicas
 
@@ -509,7 +538,7 @@ Isso significa que qualquer cliente que conheca um `deviceId` valido consegue en
 
 ### Estado do produto
 
-A base estrutural esta pronta para evoluir para um painel de monitoramento energetico de fato, mas a parte de visualizacao analitica ainda precisa ser implementada em cima das leituras ja persistidas.
+A base estrutural do painel de monitoramento energetico esta pronta, incluindo a visualizacao analitica basica (`/dashboard/reports`) em cima das leituras ja persistidas. Os proximos incrementos naturais sao intervalo de datas customizado, exportacao de dados e alertas de consumo.
 
 ## Resumo Rapido
 
@@ -522,5 +551,6 @@ Em termos praticos, o projeto hoje entrega:
 - dashboard em tempo real com metricas agregadas, custo estimado e status por dispositivo
 - controle remoto de liga/desliga do rele (dashboard, API e firmware)
 - edicao de perfil com upload de avatar
+- relatorios de consumo por periodo (24h/7d/30d) e por dispositivo, com graficos de potencia e energia
 
-O proximo passo natural de produto e transformar as leituras armazenadas em historicos e graficos por periodo (series temporais), alem de alertas de consumo.
+O proximo passo natural de produto e evoluir os relatorios: intervalo de datas customizado, exportacao dos dados (CSV) e alertas de consumo.

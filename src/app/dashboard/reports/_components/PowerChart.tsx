@@ -1,0 +1,85 @@
+"use client";
+
+import {
+  Area,
+  AreaChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import type { Range } from "./ReportFilters";
+
+interface SeriesPoint {
+  timestamp: string;
+  power: number;
+}
+
+interface PowerChartProps {
+  series: SeriesPoint[];
+  range: Range;
+}
+
+function formatTick(timestamp: string, range: Range) {
+  const date = new Date(timestamp);
+  if (range === "24h") {
+    return date.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+  }
+  if (range === "7d") {
+    return date.toLocaleString("pt-BR", {
+      day: "2-digit",
+      month: "2-digit",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
+  }
+  return date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit" });
+}
+
+export function PowerChart({ series, range }: PowerChartProps) {
+  return (
+    <div className="rounded-xl border border-border bg-card p-6">
+      <h3 className="text-sm font-semibold text-foreground mb-4">
+        Potência ao longo do tempo
+      </h3>
+      <div className="h-72">
+        <ResponsiveContainer width="100%" height="100%">
+          <AreaChart data={series} margin={{ left: -10, right: 10 }}>
+            <defs>
+              <linearGradient id="powerFill" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="5%" stopColor="#00d1ff" stopOpacity={0.35} />
+                <stop offset="95%" stopColor="#00d1ff" stopOpacity={0} />
+              </linearGradient>
+            </defs>
+            <CartesianGrid strokeDasharray="3 3" stroke="#334155" />
+            <XAxis
+              dataKey="timestamp"
+              tickFormatter={(v) => formatTick(v, range)}
+              stroke="#94a3b8"
+              tick={{ fontSize: 12 }}
+            />
+            <YAxis stroke="#94a3b8" tick={{ fontSize: 12 }} unit="W" />
+            <Tooltip
+              contentStyle={{
+                backgroundColor: "#1e293b",
+                border: "1px solid #334155",
+                borderRadius: 8,
+                color: "#e2e8f0",
+              }}
+              labelFormatter={(v) => formatTick(String(v), range)}
+              formatter={(value) => [`${Number(value).toFixed(1)} W`, "Potência"]}
+            />
+            <Area
+              type="monotone"
+              dataKey="power"
+              stroke="#00d1ff"
+              fill="url(#powerFill)"
+              strokeWidth={2}
+            />
+          </AreaChart>
+        </ResponsiveContainer>
+      </div>
+    </div>
+  );
+}
