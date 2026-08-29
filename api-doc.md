@@ -190,15 +190,19 @@ Recebe e armazena uma leitura de sensor enviada pelo dispositivo (ESP32). Este e
 {
   "corrente": 1.23,
   "potencia": 280.5,
-  "energia": 0.045
+  "energia": 0.045,
+  "rele": true
 }
 ```
 
-| Campo    | Tipo   | Obrigatório | Range              | Descrição                  |
-|----------|--------|-------------|-------------------|----------------------------|
-| corrente | number | sim         | 0 – 100 A         | Corrente elétrica (A)      |
-| potencia | number | sim         | 0 – 25 000 W      | Potência instantânea (W)   |
-| energia  | number | sim         | ≥ 0 kWh           | Energia acumulada (kWh)    |
+| Campo    | Tipo    | Obrigatório | Range              | Descrição                          |
+|----------|---------|-------------|--------------------|-------------------------------------|
+| corrente | number  | sim         | 0 – 100 A         | Corrente elétrica (A)              |
+| potencia | number  | sim         | 0 – 25 000 W      | Potência instantânea (W)           |
+| energia  | number  | sim         | ≥ 0 kWh           | Energia acumulada (kWh)            |
+| rele     | boolean | não         | —                  | Status do relé no momento da leitura (default `true` se omitido) |
+
+O custo estimado da leitura (`Reading.cost`) e calculado automaticamente como `energia × tarifa do usuario`. Se `rele` for enviado, o `relayStatus` do device tambem e atualizado com esse valor.
 
 **Resposta `201`**
 ```json
@@ -213,6 +217,78 @@ Recebe e armazena uma leitura de sensor enviada pelo dispositivo (ESP32). Este e
 | 400    | Campos ausentes ou com tipo inválido            |
 | 404    | `deviceId` não encontrado                       |
 | 422    | Valores fora do range permitido                 |
+
+---
+
+## Controle do Relé
+
+### `GET /api/devices/[deviceId]/control`
+
+Retorna o status atual do relé de um dispositivo. Este endpoint **não exige autenticação de sessão** — é chamado diretamente pelo hardware (ESP32) a cada ciclo para saber se deve ligar ou desligar o relé.
+
+**Parâmetro de rota**
+| Parâmetro | Tipo   | Descrição      |
+|-----------|--------|----------------|
+| deviceId  | string | ID do device   |
+
+**Resposta `200`**
+```json
+{
+  "deviceId": "cuid",
+  "ligado": true
+}
+```
+
+**Erros**
+| Status | Motivo                     |
+|--------|-----------------------------|
+| 404    | `deviceId` não encontrado   |
+
+---
+
+### `POST /api/devices/[deviceId]/control`
+
+Liga ou desliga o relé de um dispositivo. Chamado pelo dashboard quando o usuário aciona o botão de ligar/desligar. Apenas o dono do dispositivo pode alterá-lo.
+
+**Autenticação:** obrigatória
+
+**Parâmetro de rota**
+| Parâmetro | Tipo   | Descrição      |
+|-----------|--------|----------------|
+| deviceId  | string | ID do device   |
+
+**Body**
+```json
+{
+  "ligado": false
+}
+```
+
+| Campo  | Tipo    | Obrigatório | Descrição                          |
+|--------|---------|-------------|-------------------------------------|
+| ligado | boolean | sim         | `true` para ligar, `false` para desligar |
+
+**Resposta `200`**
+```json
+{
+  "deviceId": "cuid",
+  "ligado": false
+}
+```
+
+**Erros**
+| Status | Motivo                                      |
+|--------|----------------------------------------------|
+| 400    | `ligado` ausente ou não é booleano            |
+| 401    | Não autenticado                               |
+| 403    | Dispositivo pertence a outro usuário          |
+| 404    | Dispositivo não encontrado                    |
+
+---
+
+### `PUT /api/devices/[deviceId]/control`
+
+Alias de `POST /api/devices/[deviceId]/control` — mesmo comportamento, mesmo body, mesmas respostas.
 
 ---
 

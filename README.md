@@ -160,13 +160,13 @@ Essa rota delega o tratamento completo ao Better Auth via `toNextJsHandler(auth)
 #### Dashboard em tempo real
 
 - `GET /api/dashboard`
-	Retorna os dispositivos do usuario com a ultima leitura de cada um, alem de agregados: potencia total, corrente total, energia acumulada e contagem de dispositivos ativos.
+	Retorna os dispositivos do usuario (com `relayStatus`) e a ultima leitura de cada um, alem de agregados: potencia total, corrente total, energia acumulada, contagem de dispositivos ativos e a tarifa do usuario.
 	Usado pelo polling automatico do lado do cliente.
 
 #### Leituras de energia
 
 - `POST /api/devices/[deviceId]/readings`
-	Recebe uma leitura de um dispositivo existente e grava no banco.
+	Recebe uma leitura de um dispositivo existente e grava no banco. Rota publica, chamada diretamente pelo hardware (ESP32).
 
 O payload esperado hoje e:
 
@@ -174,7 +174,8 @@ O payload esperado hoje e:
 {
 	"corrente": 1.23,
 	"potencia": 220.5,
-	"energia": 5.17
+	"energia": 5.17,
+	"rele": true
 }
 ```
 
@@ -183,6 +184,17 @@ Mapeamento para o banco:
 - `corrente` -> `Reading.current`
 - `potencia` -> `Reading.power`
 - `energia` -> `Reading.energy`
+- `rele` (opcional) -> `Reading.relayOn` e tambem atualiza `Device.relayStatus`
+
+O custo da leitura (`Reading.cost`) e calculado no servidor como `energia * tarifa do usuario`.
+
+#### Controle do rele
+
+- `GET /api/devices/[deviceId]/control`
+	Retorna o status atual do rele (`{ deviceId, ligado }`). Rota publica, consultada pelo hardware a cada ciclo para saber se deve ligar ou desligar.
+
+- `POST /api/devices/[deviceId]/control` (alias `PUT`)
+	Liga ou desliga o rele (`{ ligado: boolean }`). Exige autenticacao e valida que o dispositivo pertence ao usuario da sessao. Usado pelo botao de liga/desliga no dashboard.
 
 #### Upload de avatar
 
@@ -219,6 +231,7 @@ Campos principais:
 - `id`
 - `name`
 - `userId`
+- `relayStatus`: status atual do rele (`true` = ligado, `false` = desligado)
 - `createdAt`
 - `updatedAt`
 
@@ -231,10 +244,14 @@ Campos principais:
 - `current`: corrente em amperes
 - `power`: potencia em watts
 - `energy`: energia acumulada em kWh
+- `cost`: custo estimado em R$ (`energy * tarifa do usuario` no momento da leitura)
+- `relayOn`: status do rele no momento da leitura
 - `timestamp`
 - `deviceId`
 
 Existe um indice composto em `deviceId + timestamp`, adequado para futuras consultas por periodo.
+
+O modelo `User` tambem possui um campo `tariff` (R$/kWh, editavel via `PATCH /api/user/tariff`), usado para calcular o custo estimado no dashboard.
 
 ## Funcionalidades Implementadas
 
@@ -321,24 +338,29 @@ O e-mail esta visivel, mas bloqueado para edicao na interface atual.
 
 Implementado em `/dashboard` com arquitetura hibrida SSR + polling no cliente.
 
-A pagina renderiza os dados iniciais no servidor (SSR) e os passa como `initialData` para um client component (`DashboardLive`) que faz polling a cada 3 segundos na rota `GET /api/dashboard`.
+A pagina renderiza os dados iniciais no servidor (SSR) e os passa como `initialData` para um client component (`DashboardLive`) que faz polling a cada 1 segundo na rota `GET /api/dashboard`.
 
 O dashboard exibe:
 
 **Cards de resumo:**
 
-- Potencia Total (W): soma da potencia instantanea dos dispositivos com leitura recente (ultimos 60s)
-- Corrente Total (A): soma da corrente dos dispositivos com leitura recente (ultimos 60s)
+- Potencia Total (W): soma da potencia instantanea dos dispositivos com leitura recente
+- Corrente Total (A): soma da corrente dos dispositivos com leitura recente
 - Energia Acumulada (kWh): soma da energia registrada de todos os dispositivos, independente do tempo
-- Dispositivos Ativos: quantidade de dispositivos com leitura nos ultimos 60s
+- Dispositivos Ativos: quantidade de dispositivos com leitura recente
+
+**Card de custo estimado:**
+
+- Mostra `energia acumulada * tarifa` em R$, com a tarifa editavel inline (`PATCH /api/user/tariff`)
 
 **Cards por dispositivo:**
 
 - Nome e ID do dispositivo
-- Badge de status: **Ativo** (verde, leitura <= 60s), **Offline** (vermelho, leitura > 60s) ou **Sem dados** (cinza, nenhuma leitura)
-- Potencia e corrente zeradas automaticamente quando a ultima leitura tiver mais de 60s (dispositivo provavelmente desligado)
+- Badge de status: **Ativo** (verde, leitura recente), **Offline** (vermelho, leitura antiga) ou **Sem dados** (cinza, nenhuma leitura)
+- Potencia e corrente zeradas automaticamente quando a ultima leitura estiver desatualizada (dispositivo provavelmente desligado)
 - Energia acumulada sempre exibida, independente do tempo da ultima leitura
 - Ha quanto tempo foi a ultima leitura
+- Botao de liga/desliga do rele (`POST /api/devices/[deviceId]/control`)
 
 Um indicador visual pulsante confirma que o polling esta ativo. O horario da ultima atualizacao e exibido apos o primeiro ciclo de polling para evitar erro de hidratacao entre servidor e cliente.
 
@@ -346,11 +368,21 @@ Erros de rede sao tratados silenciosamente: o ultimo dado valido continua visive
 
 **Deteccao de dispositivo offline:**
 
-Um limiar de 60 segundos e aplicado tanto na API quanto no componente de card. Se a ultima leitura de um dispositivo for mais antiga que esse limiar:
+Um limiar de 10 segundos (`STALE_MS`, marcado no codigo com um `TODO` para ser ajustado para 60s apos a apresentacao do TCC) e aplicado tanto na API (`src/app/api/dashboard/route.ts`) quanto no componente de card (`DeviceReadingCard.tsx`). Se a ultima leitura de um dispositivo for mais antiga que esse limiar:
 
 - Na API: potencia e corrente nao entram nos totais do sumario; o dispositivo nao e contado como ativo
 - No card: potencia e corrente exibem 0; o badge muda de Ativo para Offline
 - Energia nunca e zerada por ser um valor acumulado
+
+### 10. Controle remoto do rele
+
+Cada dispositivo tem um `relayStatus` (ligado/desligado). O usuario pode ligar ou desligar remotamente pelo card do dispositivo no dashboard, que chama `POST /api/devices/[deviceId]/control`.
+
+O ESP32 consulta `GET /api/devices/[deviceId]/control` a cada ciclo do loop para saber o status desejado e aciona o pino do rele fisico de acordo. O firmware tambem reporta o status do rele em cada leitura enviada (`rele` no payload de `/readings`), mantendo `Device.relayStatus` e `Reading.relayOn` sincronizados mesmo se a chamada de controle falhar.
+
+### 11. Tarifa de energia e custo estimado
+
+O usuario define sua tarifa de energia (R$/kWh) em `User.tariff`, editavel inline no dashboard (`PATCH /api/user/tariff`). Cada leitura recebida calcula e grava seu proprio custo (`Reading.cost = energia * tarifa`), e o dashboard soma isso para exibir o custo total estimado.
 
 ### 9. Upload de avatar
 
@@ -385,6 +417,8 @@ src/
 	components/
 		navigation/
 		ui/
+	emails/
+		reset-password.tsx
 	lib/
 		auth.ts
 		auth-client.ts
@@ -453,16 +487,17 @@ npm run lint
 
 ## Estado Atual do Projeto
 
-O projeto ja possui uma base funcional para autenticacao e gerenciamento de dispositivos, mas ainda nao implementa um dashboard analitico completo.
+O projeto ja possui uma base funcional completa: autenticacao, gerenciamento de dispositivos, ingestao de leituras, dashboard em tempo real, controle remoto do rele e calculo de custo por tarifa.
 
 Pontos importantes do estado atual:
 
 - a landing page esta pronta e bem segmentada em componentes
 - o fluxo de autenticacao esta funcional no cliente e no servidor
 - o cadastro de dispositivos esta funcional
-- o recebimento de leituras esta funcional no banco
-- a pagina `/dashboard` ainda esta sem conteudo real
-- ainda nao existe tela para visualizar historico de leituras ou metricas agregadas
+- o recebimento de leituras esta funcional no banco, incluindo custo e status do rele
+- a pagina `/dashboard` exibe metricas agregadas e por dispositivo, com polling em tempo real
+- o controle remoto do rele (ligar/desligar) esta funcional entre dashboard, API e firmware
+- ainda nao existe tela para visualizar historico de leituras (series temporais, graficos por periodo)
 
 ## Observacoes Tecnicas
 
@@ -483,7 +518,9 @@ Em termos praticos, o projeto hoje entrega:
 - autenticacao completa de usuarios
 - area autenticada com protecao de sessao
 - gerenciamento de dispositivos por usuario
-- endpoint para ingestao de dados do hardware
+- endpoint para ingestao de dados do hardware, com custo e status do rele
+- dashboard em tempo real com metricas agregadas, custo estimado e status por dispositivo
+- controle remoto de liga/desliga do rele (dashboard, API e firmware)
 - edicao de perfil com upload de avatar
 
-O proximo passo natural de produto e transformar as leituras armazenadas em visualizacoes, historicos, alertas e indicadores de consumo.
+O proximo passo natural de produto e transformar as leituras armazenadas em historicos e graficos por periodo (series temporais), alem de alertas de consumo.
