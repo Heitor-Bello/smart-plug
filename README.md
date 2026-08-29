@@ -58,6 +58,7 @@ Hoje o fluxo principal funciona assim:
 
 - Resend para envio de e-mail de recuperacao de senha
 - Vercel Blob para upload de avatar
+- Anthropic Claude API (`@anthropic-ai/sdk`, modelo `claude-opus-5`) para os avisos de IA nos relatorios e o chat da aplicacao
 
 ### Qualidade e tooling
 
@@ -105,6 +106,10 @@ Usado dentro da configuracao do Better Auth para enviar o e-mail com o link de r
 ### Vercel Blob
 
 Usado para armazenar imagens de avatar e substituir o avatar anterior quando ele tambem estiver salvo no Blob.
+
+### Anthropic Claude API
+
+Usada em `src/lib/anthropic.ts` (client singleton) para gerar os avisos de IA sobre o historico de consumo e para o assistente de chat da aplicacao. Ambos usam o modelo `claude-opus-5`; os avisos pedem saida estruturada (JSON schema) e o chat usa uma tool custom para consultar dados reais do usuario sob demanda.
 
 ## Arquitetura Atual
 
@@ -212,6 +217,18 @@ As leituras cruas sao agregadas em buckets de tamanho fixo por range, para mante
 
 Recebe multipart form-data com o campo `avatar`, valida tipo e tamanho do arquivo, verifica magic bytes basicos e salva a imagem no Vercel Blob.
 
+#### Analise com IA
+
+- `POST /api/reports/insights`
+	Gera (ou retorna do cache) avisos em linguagem natural sobre o consumo de um periodo/dispositivo, usando a Claude API. Body: `{ deviceId, range, force? }` (mesmos valores aceitos por `/api/reports`; `force: true` ignora o cache). Resposta: `{ insights: { title, message, severity }[], generatedAt, cached }`.
+
+	O resultado fica em cache por 30 minutos por combinacao de usuario/dispositivo/periodo (tabela `Insight`), evitando chamar a API a cada carregamento da tela. A geracao usa a mesma agregacao de `getReportData` (compartilhada com `/api/reports`) e pede a resposta em formato estruturado (JSON schema), nunca texto livre.
+
+- `POST /api/chat`
+	Endpoint do assistente de chat. Body: `{ messages: { role: "user" | "assistant", content: string }[] }` — o cliente reenvia o historico completo a cada chamada (API sem estado). Resposta: `{ reply: string }`.
+
+	A IA tem acesso a uma tool (`get_consumption_data`) que consulta os dados reais do usuario autenticado sob demanda (mesma agregacao de `/api/reports`), em vez de depender de um resumo fixo enviado pelo cliente. A tool so enxerga dispositivos do proprio usuario da sessao. Historico de conversa nao e persistido no banco — vive apenas no estado do componente de chat, no navegador.
+
 ## Banco de Dados
 
 O schema Prisma define os seguintes modelos:
@@ -262,6 +279,20 @@ Campos principais:
 Existe um indice composto em `deviceId + timestamp`, adequado para futuras consultas por periodo.
 
 O modelo `User` tambem possui um campo `tariff` (R$/kWh, editavel via `PATCH /api/user/tariff`), usado para calcular o custo estimado no dashboard.
+
+### Insight
+
+Cache dos avisos gerados por IA sobre o historico de consumo (ver `POST /api/reports/insights`).
+
+Campos principais:
+
+- `userId`
+- `deviceId`: `null` representa "todos os dispositivos"
+- `range`: `"24h"` | `"7d"` | `"30d"`
+- `content`: lista de avisos (`{ title, message, severity }[]`) em formato JSON
+- `createdAt`: usado para calcular a validade do cache (30 minutos)
+
+Existe um indice composto em `userId + deviceId + range` para a consulta de cache.
 
 ## Funcionalidades Implementadas
 
@@ -422,6 +453,23 @@ As leituras cruas sao agregadas no servidor em buckets (5 min / 1 hora / 1 dia, 
 
 > **Nota de escala:** a agregacao hoje e feita em memoria (busca as leituras cruas do periodo via Prisma e agrupa em JS), o que e adequado para o volume atual do projeto. Se o numero de leituras crescer muito, o proximo passo seria mover essa agregacao para o banco (SQL com `date_trunc`/bucket), evitando trazer todas as leituras cruas para a aplicacao.
 
+### 13. Analise com IA e chat na aplicacao
+
+Primeira integracao do projeto com a Claude API (Anthropic), usando o SDK oficial (`@anthropic-ai/sdk`) com o modelo `claude-opus-5`.
+
+**Avisos automaticos sobre o historico** (`/dashboard/reports`, `POST /api/reports/insights`):
+
+- Botao "Gerar analise com IA" no topo da tela de relatorios, que envia o resumo agregado do periodo/dispositivo selecionado para a Claude e recebe de volta uma lista de avisos curtos (titulo, mensagem e severidade `info`/`warning`/`success`), pedidos em formato estruturado (JSON schema via `output_config.format`), nunca texto livre
+- Os avisos explicam o que os numeros significam (ex: energia do bucket e o consumo daquele intervalo, nao um total desde sempre) e apontam padroes reais nos dados (picos, tendencias, horarios de maior uso)
+- Resultado fica em cache por 30 minutos por usuario/dispositivo/periodo (model `Insight`), evitando chamar a API a cada carregamento da tela; o botao vira "Atualizar analise" e forca uma nova geracao quando clicado de novo
+
+**Chat na aplicacao** (`POST /api/chat`, componente `ChatWidget`):
+
+- Botao flutuante disponivel em toda a area autenticada (`dashboard/layout.tsx`), abrindo um painel de conversa
+- O assistente pode responder perguntas sobre como o app funciona e, para perguntas sobre dados reais (consumo, custo, potencia de um periodo), usa uma tool (`get_consumption_data`) que consulta o banco sob demanda, sempre restrita aos dispositivos do usuario autenticado — a IA nunca recebe acesso direto ao banco nem pode ver dados de outro usuario
+- Implementado com um loop manual de tool use (nao o Tool Runner beta do SDK), para manter a resposta simples e sem streaming nesta primeira versao
+- Historico de conversa vive apenas no estado do componente no navegador — nao e persistido no banco nesta versao
+
 ## Estrutura do Projeto
 
 ```text
@@ -429,9 +477,11 @@ src/
 	app/
 		api/
 			auth/
+			chat/
 			dashboard/
 			devices/
 			reports/
+				insights/
 			upload/
 		dashboard/
 			_components/
@@ -443,14 +493,17 @@ src/
 		register/
 		reset-password/
 	components/
+		chat/
 		navigation/
 		ui/
 	emails/
 		reset-password.tsx
 	lib/
+		anthropic.ts
 		auth.ts
 		auth-client.ts
 		prisma.ts
+		reports.ts
 		resend.ts
 		session.ts
 prisma/
@@ -470,9 +523,12 @@ NEXT_PUBLIC_BASE_URL=http://localhost:3000
 SEND_EMAIL_API_KEY=
 GOOGLE_CLIENT_ID=
 GOOGLE_CLIENT_SECRET=
+ANTHROPIC_API_KEY=
 ```
 
 Se o upload de avatar for usado fora do ambiente gerenciado da Vercel, tambem sera necessario configurar as credenciais do Vercel Blob.
+
+`ANTHROPIC_API_KEY` e necessaria para os avisos de IA (`POST /api/reports/insights`) e o chat (`POST /api/chat`) funcionarem — obtida em [console.anthropic.com](https://console.anthropic.com).
 
 ## Como Rodar Localmente
 
@@ -515,7 +571,7 @@ npm run lint
 
 ## Estado Atual do Projeto
 
-O projeto ja possui uma base funcional completa: autenticacao, gerenciamento de dispositivos, ingestao de leituras, dashboard em tempo real, controle remoto do rele, calculo de custo por tarifa e relatorios de consumo por periodo.
+O projeto ja possui uma base funcional completa: autenticacao, gerenciamento de dispositivos, ingestao de leituras, dashboard em tempo real, controle remoto do rele, calculo de custo por tarifa, relatorios de consumo por periodo e uma primeira integracao com IA (avisos automaticos e chat).
 
 Pontos importantes do estado atual:
 
@@ -527,6 +583,7 @@ Pontos importantes do estado atual:
 - o controle remoto do rele (ligar/desligar) esta funcional entre dashboard, API e firmware
 - a pagina `/dashboard/reports` exibe historico de consumo (potencia e energia) por periodo e por dispositivo, com agregacao em buckets feita no servidor
 - ainda nao existe intervalo de datas customizado nem exportacao dos relatorios (hoje sao apenas os presets 24h/7d/30d)
+- os avisos de IA (`/api/reports/insights`) sao gerados sob demanda (nao automaticamente) e o chat (`/api/chat`) nao persiste historico entre sessoes — ambas decisoes tomadas para manter o custo de API previsivel na primeira versao
 
 ## Observacoes Tecnicas
 
@@ -538,7 +595,7 @@ Isso significa que qualquer cliente que conheca um `deviceId` valido consegue en
 
 ### Estado do produto
 
-A base estrutural do painel de monitoramento energetico esta pronta, incluindo a visualizacao analitica basica (`/dashboard/reports`) em cima das leituras ja persistidas. Os proximos incrementos naturais sao intervalo de datas customizado, exportacao de dados e alertas de consumo.
+A base estrutural do painel de monitoramento energetico esta pronta, incluindo a visualizacao analitica basica (`/dashboard/reports`), avisos automaticos gerados por IA e um chat para o usuario perguntar sobre o app e os proprios dados. Os proximos incrementos naturais sao intervalo de datas customizado, exportacao de dados e persistir o historico do chat.
 
 ## Resumo Rapido
 
@@ -552,5 +609,6 @@ Em termos praticos, o projeto hoje entrega:
 - controle remoto de liga/desliga do rele (dashboard, API e firmware)
 - edicao de perfil com upload de avatar
 - relatorios de consumo por periodo (24h/7d/30d) e por dispositivo, com graficos de potencia e energia
+- avisos de IA sobre o historico de consumo e chat na aplicacao para perguntas sobre o app e os dados do usuario (Claude API)
 
-O proximo passo natural de produto e evoluir os relatorios: intervalo de datas customizado, exportacao dos dados (CSV) e alertas de consumo.
+O proximo passo natural de produto e evoluir os relatorios (intervalo customizado, exportacao CSV) e o chat (persistir historico, sugerir perguntas).

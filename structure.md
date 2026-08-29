@@ -117,9 +117,11 @@ src/
 │   │
 │   └── api/                      # Rotas de API (ver api-doc.md para detalhes)
 │       ├── auth/[...all]/        # Better Auth (login, cadastro, OAuth, senha)
+│       ├── chat/                  # Assistente de chat (Claude API + tool use)
 │       ├── dashboard/            # Dados agregados do dashboard em tempo real
 │       ├── devices/               # CRUD de dispositivos + leituras + controle do rele
 │       ├── reports/               # Serie historica agregada (potencia/energia/custo)
+│       │   └── insights/          # Avisos de IA sobre o historico (com cache)
 │       ├── user/                  # Tarifa de energia do usuario
 │       └── upload/                # Upload de avatar (Vercel Blob)
 │
@@ -132,15 +134,19 @@ src/
 │   │   ├── nav-items.tsx         # Fonte unica dos itens de menu (Dashboard, Dispositivos, Relatorios, Perfil)
 │   │   ├── Sidebar.tsx           # Navegacao desktop (>= lg)
 │   │   └── MobileNav.tsx         # Header + menu dropdown mobile (< lg)
+│   ├── chat/
+│   │   └── ChatWidget.tsx        # Botao flutuante + painel de chat (montado em dashboard/layout.tsx)
 │   └── button-signout.tsx
 │
 ├── emails/
 │   └── reset-password.tsx        # Template de e-mail (React Email) usado pelo Resend
 │
 └── lib/
+    ├── anthropic.ts               # Client singleton da Claude API (@anthropic-ai/sdk)
     ├── auth.ts                   # Configuracao do Better Auth (server)
     ├── auth-client.ts            # Client do Better Auth (hooks React)
     ├── prisma.ts                 # Instancia singleton do Prisma Client
+    ├── reports.ts                 # getReportData(): agregacao de leituras em buckets, reusada por /api/reports, /api/reports/insights e a tool do chat
     ├── resend.ts                 # Cliente do Resend
     └── session.ts                # Helper getServerSession()
 ```
@@ -177,6 +183,15 @@ As paginas de login, cadastro e recuperacao de senha seguem um layout dividido e
 ### 5. Paginas com dado em tempo real / historico
 
 `dashboard/page.tsx` e `dashboard/reports/page.tsx` seguem o mesmo padrao hibrido: o Server Component busca os dados iniciais (Prisma) e um Client Component (`DashboardLive` / `ReportsView`) assume a partir dai — `DashboardLive` faz polling a cada 1s em `GET /api/dashboard`, enquanto `ReportsView` refaz o fetch em `GET /api/reports` sempre que o usuario troca o filtro de dispositivo ou periodo (sem polling, por ser dado historico).
+
+### 6. Integracao com IA (Claude API)
+
+`src/lib/anthropic.ts` exporta um client singleton (mesmo padrao de `src/lib/prisma.ts`), usado em dois pontos:
+
+- `POST /api/reports/insights` (avisos sobre o historico, com saida estruturada via `output_config.format` e cache no model `Insight`) — UI em `dashboard/reports/_components/AiInsights.tsx`
+- `POST /api/chat` (assistente de chat, com uma tool custom que consulta `getReportData()` sob demanda) — UI em `components/chat/ChatWidget.tsx`, montado globalmente em `dashboard/layout.tsx`
+
+Ambos reaproveitam `src/lib/reports.ts` (`getReportData()`) em vez de duplicar a logica de agregacao de `GET /api/reports` — qualquer mudanca na forma como os buckets sao calculados afeta os tres pontos de uso automaticamente.
 
 ---
 
@@ -274,3 +289,4 @@ Rotas de API (`/api/...`) estao documentadas em `api-doc.md`.
 - **Recharts** (graficos em `dashboard/reports`)
 - **React Hook Form + Zod** (formularios)
 - **Lucide React** (icones)
+- **Anthropic Claude API** (`@anthropic-ai/sdk`, modelo `claude-opus-5`) — avisos de IA e chat

@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { getServerSession } from "@/lib/session";
 import { Sidebar } from "@/components/navigation/Sidebar";
 import { MobileNav } from "@/components/navigation/MobileNav";
+import { ChatWidget } from "@/components/chat/ChatWidget";
 
 export default async function DashboardLayout({
   children,
@@ -28,6 +29,8 @@ export default async function DashboardLayout({
       <main className="lg:pl-64">
         <div className="pt-16 lg:pt-0">{children}</div>
       </main>
+
+      <ChatWidget />
     </div>
   );
 }

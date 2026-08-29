@@ -6,6 +6,7 @@ import { StatsCard } from "../../_components/StatsCard";
 import { ReportFilters, type Range } from "./ReportFilters";
 import { PowerChart } from "./PowerChart";
 import { EnergyChart } from "./EnergyChart";
+import { AiInsights } from "./AiInsights";
 
 interface Device {
   id: string;
@@ -119,6 +120,8 @@ export function ReportsView({ devices }: { devices: Device[] }) {
 
       {!error && summary && summary.readingsCount > 0 && (
         <>
+          <AiInsights deviceId={deviceId} range={range} />
+
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
             <StatsCard
               title="Energia no Período"

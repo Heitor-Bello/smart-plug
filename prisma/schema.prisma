@@ -25,6 +25,7 @@ model User {
   sessions      Session[]
   accounts      Account[]
   devices       Device[]
+  insights      Insight[]
 
   @@unique([email])
   @@map("user")
@@ -107,4 +108,18 @@ model Reading {
 
   @@index([deviceId, timestamp])            // índice composto — essencial para queries por período
   @@map("reading")
+}
+
+// Insight (avisos gerados por IA sobre o histórico de consumo, com cache)
+model Insight {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  deviceId  String?                          // null = "todos os dispositivos"
+  range     String                           // "24h" | "7d" | "30d"
+  content   Json                             // lista de avisos: { title, message, severity }[]
+  createdAt DateTime @default(now())
+
+  @@index([userId, deviceId, range])
+  @@map("insight")
 }

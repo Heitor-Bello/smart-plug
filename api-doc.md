@@ -125,6 +125,55 @@ Dentro de cada bucket, `power` e `current` são a média das leituras cruas naqu
 
 ---
 
+### `POST /api/reports/insights`
+
+Gera (ou retorna do cache) avisos em linguagem natural sobre o consumo de um período/dispositivo, usando a Claude API (`claude-opus-5`).
+
+**Autenticação:** obrigatória
+
+**Body**
+```json
+{
+  "deviceId": "all",
+  "range": "24h",
+  "force": false
+}
+```
+
+| Campo    | Tipo    | Obrigatório | Valores aceitos                        | Descrição                                                  |
+|----------|---------|-------------|------------------------------------------|--------------------------------------------------------------|
+| deviceId | string  | não         | id de um device do usuário, ou `all`     | Ausente ou `all` = todos os dispositivos. Default: `all`      |
+| range    | string  | não         | `24h` \| `7d` \| `30d`                   | Default: `24h`                                                |
+| force    | boolean | não         | —                                         | `true` ignora o cache e gera uma nova análise. Default: `false` |
+
+O resultado fica em cache por 30 minutos por combinação de `userId` + `deviceId` + `range` (model `Insight`), para evitar chamar a API a cada carregamento da tela. A análise é pedida à Claude em formato estruturado (JSON schema via `output_config.format`), nunca texto livre, e usa a mesma agregação de `GET /api/reports` (função compartilhada `getReportData`) — nunca leituras cruas.
+
+**Resposta `200`**
+```json
+{
+  "insights": [
+    {
+      "title": "Salto forte de consumo no fim do período",
+      "message": "Até cerca de 15h30 a potência girava em torno de 120 W, mas subiu para ~370 W e ficou nesse nível por 2 horas.",
+      "severity": "warning"
+    }
+  ],
+  "generatedAt": "2026-08-29T17:42:00.751Z",
+  "cached": false
+}
+```
+
+`severity` é um de `"info"`, `"warning"` ou `"success"`. Se não houver leituras no período, `insights` volta como lista vazia.
+
+**Erros**
+| Status | Motivo                                        |
+|--------|-------------------------------------------------|
+| 401    | Não autenticado                                  |
+| 404    | `deviceId` informado não pertence ao usuário     |
+| 502    | A Claude API não retornou uma saída estruturada válida |
+
+---
+
 ## Dispositivos
 
 ### `GET /api/devices`
@@ -420,3 +469,43 @@ Faz o upload da foto de perfil do usuário para o Vercel Blob Storage. Substitui
 | 400    | Arquivo muito grande (> 5 MB)              |
 | 400    | Magic bytes inválidos (arquivo corrompido) |
 | 401    | Não autenticado                            |
+
+---
+
+## Assistente de IA (Chat)
+
+### `POST /api/chat`
+
+Endpoint do assistente de chat da aplicação (usado pelo componente `ChatWidget`, disponível em toda a área autenticada). Usa a Claude API (`claude-opus-5`) com tool use.
+
+**Autenticação:** obrigatória
+
+**Body**
+```json
+{
+  "messages": [
+    { "role": "user", "content": "Quanto eu gastei nas últimas 24h?" }
+  ]
+}
+```
+
+| Campo    | Tipo                                  | Obrigatório | Descrição                                                          |
+|----------|-----------------------------------------|-------------|------------------------------------------------------------------------|
+| messages | `{ role: "user" \| "assistant", content: string }[]` | sim | Histórico completo da conversa até agora. A API é sem estado — o cliente reenvia tudo a cada chamada. A última mensagem precisa ter `role: "user"`. |
+
+O assistente conhece o funcionamento do app e a lista de dispositivos do usuário (injetada no system prompt). Para perguntas sobre dados reais (consumo, custo, potência de um período), ele chama internamente uma tool, `get_consumption_data`, que consulta o banco sob demanda usando a mesma agregação de `GET /api/reports` — sempre restrita aos dispositivos do `userId` da sessão autenticada, nunca dados de outro usuário. O loop de tool use é manual (não usa o Tool Runner beta do SDK) e tem um limite de 4 idas e vindas por requisição.
+
+Histórico de conversa **não é persistido no banco** — o cliente é responsável por guardar e reenviar as mensagens; ao recarregar a página, a conversa reinicia.
+
+**Resposta `200`**
+```json
+{
+  "reply": "Nas últimas 24h você gastou R$ 1,97 (2,62 kWh), com potência média de 109 W."
+}
+```
+
+**Erros**
+| Status | Motivo                                                    |
+|--------|--------------------------------------------------------------|
+| 400    | `messages` ausente, vazio, ou a última mensagem não é do usuário |
+| 401    | Não autenticado                                                |
