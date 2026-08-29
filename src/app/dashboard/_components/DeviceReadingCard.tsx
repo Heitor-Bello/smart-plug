@@ -76,7 +76,7 @@ export function DeviceReadingCard({
   }
 
   return (
-    <div className="rounded-xl border border-border bg-card p-6 space-y-4 hover:border-primary ease-in-out duration-200">
+    <div className="rounded-xl border border-border bg-card p-6 flex flex-col h-full gap-4 hover:border-primary ease-in-out duration-200">
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
@@ -138,7 +138,7 @@ export function DeviceReadingCard({
       )}
 
       {/* Relay Control */}
-      <div className="pt-2 border-t border-border space-y-2">
+      <div className="mt-auto pt-2 border-t border-border space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <Power size={14} className={relayStatus ? "text-success" : "text-muted-foreground"} />
