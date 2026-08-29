@@ -89,78 +89,93 @@ export async function POST(request: NextRequest) {
     orderBy: { createdAt: "desc" },
   });
 
-  const messages: Anthropic.MessageParam[] = [...history];
   const system = buildSystemPrompt(devices);
+  const userId = session.user.id;
+  const encoder = new TextEncoder();
 
-  for (let i = 0; i < MAX_ITERATIONS; i++) {
-    const response = await anthropic.messages.create({
-      model: "claude-opus-5",
-      max_tokens: 4096,
-      system,
-      tools: [GET_CONSUMPTION_DATA_TOOL],
-      messages,
-    });
+  const responseStream = new ReadableStream<Uint8Array>({
+    async start(controller) {
+      const messages: Anthropic.MessageParam[] = [...history];
 
-    messages.push({ role: "assistant", content: response.content });
-
-    if (response.stop_reason !== "tool_use") {
-      const text = response.content
-        .filter((b): b is Anthropic.TextBlock => b.type === "text")
-        .map((b) => b.text)
-        .join("\n")
-        .trim();
-      return NextResponse.json({
-        reply: text || "Não consegui gerar uma resposta para isso.",
-      });
-    }
-
-    const toolUseBlocks = response.content.filter(
-      (b): b is Anthropic.ToolUseBlock => b.type === "tool_use",
-    );
-
-    const toolResults: Anthropic.ToolResultBlockParam[] = [];
-    for (const tool of toolUseBlocks) {
-      if (tool.name === "get_consumption_data") {
-        const input = tool.input as { deviceId?: string; range?: string };
-        const range: Range =
-          input.range === "7d" || input.range === "30d" ? input.range : "24h";
-        try {
-          const data = await getReportData({
-            userId: session.user.id,
-            deviceId: input.deviceId,
-            range,
+      try {
+        for (let i = 0; i < MAX_ITERATIONS; i++) {
+          const anthropicStream = anthropic.messages.stream({
+            model: "claude-opus-5",
+            max_tokens: 4096,
+            system,
+            tools: [GET_CONSUMPTION_DATA_TOOL],
+            messages,
           });
-          toolResults.push({
-            type: "tool_result",
-            tool_use_id: tool.id,
-            content: JSON.stringify(data),
+
+          anthropicStream.on("text", (delta) => {
+            controller.enqueue(encoder.encode(delta));
           });
-        } catch (error) {
-          const message =
-            error instanceof DeviceNotFoundError
-              ? error.message
-              : "Erro ao buscar dados de consumo";
-          toolResults.push({
-            type: "tool_result",
-            tool_use_id: tool.id,
-            content: message,
-            is_error: true,
-          });
+
+          const response = await anthropicStream.finalMessage();
+          messages.push({ role: "assistant", content: response.content });
+
+          if (response.stop_reason !== "tool_use") {
+            controller.close();
+            return;
+          }
+
+          const toolUseBlocks = response.content.filter(
+            (b): b is Anthropic.ToolUseBlock => b.type === "tool_use",
+          );
+
+          const toolResults: Anthropic.ToolResultBlockParam[] = [];
+          for (const tool of toolUseBlocks) {
+            if (tool.name === "get_consumption_data") {
+              const input = tool.input as { deviceId?: string; range?: string };
+              const range: Range =
+                input.range === "7d" || input.range === "30d" ? input.range : "24h";
+              try {
+                const data = await getReportData({ userId, deviceId: input.deviceId, range });
+                toolResults.push({
+                  type: "tool_result",
+                  tool_use_id: tool.id,
+                  content: JSON.stringify(data),
+                });
+              } catch (error) {
+                const errorMessage =
+                  error instanceof DeviceNotFoundError
+                    ? error.message
+                    : "Erro ao buscar dados de consumo";
+                toolResults.push({
+                  type: "tool_result",
+                  tool_use_id: tool.id,
+                  content: errorMessage,
+                  is_error: true,
+                });
+              }
+            } else {
+              toolResults.push({
+                type: "tool_result",
+                tool_use_id: tool.id,
+                content: "Ferramenta desconhecida",
+                is_error: true,
+              });
+            }
+          }
+
+          messages.push({ role: "user", content: toolResults });
         }
-      } else {
-        toolResults.push({
-          type: "tool_result",
-          tool_use_id: tool.id,
-          content: "Ferramenta desconhecida",
-          is_error: true,
-        });
+
+        controller.enqueue(
+          encoder.encode(
+            "\n\nDesculpe, não consegui concluir a resposta. Tente reformular a pergunta.",
+          ),
+        );
+        controller.close();
+      } catch (error) {
+        console.error("Erro no chat:", error);
+        controller.enqueue(encoder.encode("\n\nOcorreu um erro ao gerar a resposta."));
+        controller.close();
       }
-    }
+    },
+  });
 
-    messages.push({ role: "user", content: toolResults });
-  }
-
-  return NextResponse.json({
-    reply: "Desculpe, não consegui concluir a resposta. Tente reformular a pergunta.",
+  return new Response(responseStream, {
+    headers: { "Content-Type": "text/plain; charset=utf-8" },
   });
 }

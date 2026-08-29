@@ -19,6 +19,7 @@ export function ChatWidget() {
   const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
   const [input, setInput] = useState("");
   const [loading, setLoading] = useState(false);
+  const [streamingReply, setStreamingReply] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -26,7 +27,7 @@ export function ChatWidget() {
     if (isOpen) {
       messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
     }
-  }, [messages, isOpen]);
+  }, [messages, streamingReply, isOpen]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -37,6 +38,7 @@ export function ChatWidget() {
     setMessages(nextMessages);
     setInput("");
     setLoading(true);
+    setStreamingReply("");
     setError(null);
 
     try {
@@ -45,15 +47,33 @@ export function ChatWidget() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ messages: nextMessages }),
       });
-      if (!res.ok) {
+      if (!res.ok || !res.body) {
         setError("Não foi possível enviar sua mensagem agora.");
         return;
       }
-      const json = await res.json();
-      setMessages([...nextMessages, { role: "assistant", content: json.reply }]);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let fullReply = "";
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        fullReply += decoder.decode(value, { stream: true });
+        setStreamingReply(fullReply);
+      }
+
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "assistant",
+          content: fullReply || "Não consegui gerar uma resposta para isso.",
+        },
+      ]);
     } catch {
       setError("Erro de conexão com o assistente.");
     } finally {
+      setStreamingReply(null);
       setLoading(false);
     }
   }
@@ -95,12 +115,18 @@ export function ChatWidget() {
                 </div>
               </div>
             ))}
-            {loading && (
+            {streamingReply !== null && (
               <div className="flex justify-start">
-                <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
-                  <Loader2 size={14} className="animate-spin" />
-                  Pensando...
-                </div>
+                {streamingReply ? (
+                  <div className="max-w-[85%] rounded-lg bg-muted px-3 py-2 text-sm text-foreground whitespace-pre-wrap">
+                    {streamingReply}
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-2 rounded-lg bg-muted px-3 py-2 text-sm text-muted-foreground">
+                    <Loader2 size={14} className="animate-spin" />
+                    Pensando...
+                  </div>
+                )}
               </div>
             )}
             {error && <p className="text-xs text-destructive">{error}</p>}
