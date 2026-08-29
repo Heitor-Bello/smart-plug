@@ -1,4 +1,5 @@
 #include <WiFi.h>
+#include <WiFiClientSecure.h>
 #include <HTTPClient.h>
 #include <math.h>
 
@@ -9,11 +10,11 @@
 const char* ssid = "VIVOFIBRA-8D81";
 const char* password = "amigao2022";
 
-WiFiClient wifiClient;
+WiFiClientSecure wifiClient;
 
 // URLs da API
-const char* apiURL = "https://smart-plug-woad.vercel.app/api/devices/<id-device>/readings";
-const char* apiControlURL = "https://smart-plug-woad.vercel.app/api/devices/<id-device>/control";
+const char* apiURL = "https://smart-plug-woad.vercel.app/api/devices/cmnqqi3jp0001hcd467d/readings";
+const char* apiControlURL = "https://smart-plug-woad.vercel.app/api/devices/cmnqqi3jp0001hcd467d/control";
 
 
 // =====================================================
@@ -66,32 +67,50 @@ bool releStatus = true;  // true = ligado, false = desligado
 // =====================================================
 
 void enviarDadosAPI(float correnteRMS, float potencia, double energia_kWh, bool statusRele) {
-  
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-
-    http.begin(wifiClient, apiURL);
-    http.addHeader("Content-Type", "application/json");
-
-    String json = "{";
-    json += "\"corrente\":" + String(correnteRMS, 4) + ",";
-    json += "\"potencia\":" + String(potencia, 2) + ",";
-    json += "\"energia\":" + String(energia_kWh, 6) + ",";
-    json += "\"rele\":" + String(statusRele ? "true" : "false");
-    json += "}";
-
-    Serial.println("Enviando dados para API...");
-    Serial.println(json);
-
-    int httpResponseCode = http.POST(json);
-
-    Serial.print("Resposta servidor: ");
-    Serial.println(httpResponseCode);
-
-    http.end();
-  } else {
+  if (WiFi.status() != WL_CONNECTED) {
     Serial.println("WiFi desconectado. Nao foi possivel enviar.");
+    return;
   }
+
+  HTTPClient http;
+
+  Serial.println("Enviando dados para API...");
+  Serial.println(apiURL);
+
+  if (!http.begin(wifiClient, apiURL)) {
+    Serial.println("Erro ao iniciar conexao HTTPS.");
+    return;
+  }
+
+  http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
+  http.setRedirectLimit(5);
+  http.setTimeout(10000);
+  http.addHeader("Content-Type", "application/json");
+
+  String json = "{";
+  json += "\"corrente\":" + String(correnteRMS, 4) + ",";
+  json += "\"potencia\":" + String(potencia, 2) + ",";
+  json += "\"energia\":" + String(energia_kWh, 6) + ",";
+  json += "\"rele\":" + String(statusRele ? "true" : "false");
+  json += "}";
+
+  Serial.println(json);
+
+  int httpResponseCode = http.POST(json);
+
+  Serial.print("Resposta servidor: ");
+  Serial.println(httpResponseCode);
+
+  if (httpResponseCode > 0) {
+    String resposta = http.getString();
+    Serial.println("Resposta da API:");
+    Serial.println(resposta);
+  } else {
+    Serial.print("Erro HTTP: ");
+    Serial.println(http.errorToString(httpResponseCode));
+  }
+
+  http.end();
 }
 
 
@@ -100,42 +119,58 @@ void enviarDadosAPI(float correnteRMS, float potencia, double energia_kWh, bool 
 // =====================================================
 
 void buscarStatusReleAPI() {
-  
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
+  if (WiFi.status() != WL_CONNECTED) {
+    Serial.println("WiFi desconectado. Nao foi possivel buscar status.");
+    return;
+  }
 
-    http.begin(wifiClient, apiControlURL);
-    http.addHeader("Content-Type", "application/json");
+  HTTPClient http;
 
-    Serial.println("Buscando status do rele na API...");
+  Serial.println("Buscando status do rele na API...");
+  Serial.println(apiControlURL);
 
-    int httpResponseCode = http.GET();
+  if (!http.begin(wifiClient, apiControlURL)) {
+    Serial.println("Erro ao iniciar conexao HTTPS.");
+    return;
+  }
 
-    if (httpResponseCode == 200) {
-      String resposta = http.getString();
-      Serial.println("Resposta: " + resposta);
+  http.setFollowRedirects(HTTPC_FORCE_FOLLOW_REDIRECTS);
+  http.setRedirectLimit(5);
+  http.setTimeout(10000);
 
-      // Verifica se a resposta contém "ligado": true ou false
-      if (resposta.indexOf("\"ligado\":true") != -1 || resposta.indexOf("\"ligado\": true") != -1) {
-        releStatus = true;
-      } else if (resposta.indexOf("\"ligado\":false") != -1 || resposta.indexOf("\"ligado\": false") != -1) {
-        releStatus = false;
-      }
+  int httpResponseCode = http.GET();
 
-      // Aplica o estado no pino
-      digitalWrite(pinoRele, releStatus ? HIGH : LOW);
-      
-      Serial.print("Status rele atualizado: ");
-      Serial.println(releStatus ? "LIGADO" : "DESLIGADO");
+  Serial.print("Resposta servidor: ");
+  Serial.println(httpResponseCode);
+
+  if (httpResponseCode == 200) {
+    String resposta = http.getString();
+    Serial.println("Resposta:");
+    Serial.println(resposta);
+
+    if (resposta.indexOf("\"ligado\":true") != -1 || resposta.indexOf("\"ligado\": true") != -1) {
+      releStatus = true;
+    } else if (resposta.indexOf("\"ligado\":false") != -1 || resposta.indexOf("\"ligado\": false") != -1) {
+      releStatus = false;
     } else {
-      Serial.print("Erro ao buscar status: ");
-      Serial.println(httpResponseCode);
+      Serial.println("Nao foi possivel identificar o status do rele.");
     }
 
-    http.end();
+    digitalWrite(pinoRele, releStatus ? HIGH : LOW);
+
+    Serial.print("Status rele atualizado: ");
+    Serial.println(releStatus ? "LIGADO" : "DESLIGADO");
   } else {
-    Serial.println("WiFi desconectado. Nao foi possivel buscar status.");
+    Serial.print("Erro ao buscar status: ");
+    Serial.println(httpResponseCode);
+
+    if (httpResponseCode < 0) {
+      Serial.print("Descricao: ");
+      Serial.println(http.errorToString(httpResponseCode));
+    }
   }
+
+  http.end();
 }
 
 
@@ -180,6 +215,8 @@ void setup() {
   Serial.print("Endereco IP do ESP32: ");
   Serial.println(WiFi.localIP());
 
+  wifiClient.setInsecure();
+  Serial.println("HTTPS configurado.");
 
   Serial.println("========================================");
 
@@ -382,17 +419,17 @@ void loop() {
 
 
   // ===================================================
-  // 9. ENVIAR DADOS PARA API
-  // ===================================================
-
-  enviarDadosAPI(correnteAtual, potenciaAtual, energia_kWh, releStatus);
-
-
-  // ===================================================
-  // 10. BUSCAR STATUS DO RELÉ NA API
+  // 9. BUSCAR STATUS DO RELÉ NA API
   // ===================================================
 
   buscarStatusReleAPI();
+
+
+  // ===================================================
+  // 10. ENVIAR DADOS PARA API
+  // ===================================================
+
+  enviarDadosAPI(correnteAtual, potenciaAtual, energia_kWh, releStatus);
 
 
   // ===================================================
