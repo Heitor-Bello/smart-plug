@@ -42,9 +42,8 @@ export function AddDeviceForm() {
   return (
     <form onSubmit={handleSubmit} className="space-y-3">
       <p className="text-sm text-muted-foreground">
-        Ligue a tomada inteligente e conecte-a à sua rede Wi-Fi. Ao conectar, ela
-        exibe um código de pareamento (visível no Serial Monitor durante a
-        configuração) — digite esse código abaixo para vinculá-la à sua conta.
+        Já seguiu os passos acima e anotou o código? Digite ele e um nome para o
+        dispositivo abaixo.
       </p>
       <div className="flex gap-3 items-end flex-wrap">
         <div className="flex-1 min-w-[160px]">
