@@ -2,6 +2,7 @@ import { getServerSession } from "@/lib/session";
 import { prisma } from "@/lib/prisma";
 import { DeviceList } from "./_components/device-list";
 import { AddDeviceForm } from "./_components/add-device-form";
+import { PairingGuide } from "./_components/pairing-guide";
 
 export default async function DevicesPage() {
   const session = await getServerSession();
@@ -20,6 +21,8 @@ export default async function DevicesPage() {
             Gerencie suas tomadas inteligentes.
           </p>
         </div>
+
+        <PairingGuide />
 
         <AddDeviceForm />
 

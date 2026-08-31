@@ -1,21 +1,32 @@
 #include <WiFi.h>
 #include <WiFiClientSecure.h>
 #include <HTTPClient.h>
+#include <WiFiManager.h>  // biblioteca "WiFiManager" de tzapu — instalar pelo Library Manager da IDE
 #include <math.h>
 
 // =====================================================
 // WI-FI
 // =====================================================
+//
+// Nao ha mais SSID/senha fixos no codigo. No primeiro boot (ou sempre que o
+// Wi-Fi salvo falhar), o ESP32 abre um ponto de acesso proprio e um portal de
+// configuracao (pagina servida por ele mesmo, acessada em 192.168.4.1) onde o
+// usuario escolhe a rede de casa e digita a senha — sem precisar abrir a IDE
+// do Arduino. As credenciais ficam salvas no proprio chip entre reinicios.
+//
+// Segurar o botao BOOT (GPIO0) da placa durante a ligacao apaga o Wi-Fi salvo
+// e reabre o portal — util se o dispositivo mudar de rede/casa.
 
-const char* ssid = "VIVOFIBRA-8D81";
-const char* password = "amigao2022";
+const char* apSenhaPortal = "smartplug123";  // senha do Wi-Fi temporario de configuracao (>= 8 caracteres)
+const int pinoBotaoReset = 0;                // botao BOOT, presente na maioria das placas ESP32 DevKit
 
 WiFiClientSecure wifiClient;
 
 // URLs da API — o deviceId nao e mais fixo no codigo. Cada ESP32 se identifica
 // pelo proprio MAC address (hardwareId), calculado em runtime no setup(). Isso
 // permite gravar o mesmo firmware em qualquer placa: o pareamento com uma conta
-// e feito depois, pelo app, digitando o codigo impresso no Serial Monitor.
+// e feito depois, pelo app, digitando o codigo impresso no Serial Monitor (ou
+// exibido na propria pagina de configuracao do Wi-Fi).
 const char* apiBaseURL = "https://smart-plug-woad.vercel.app/api/esp/";
 
 String hardwareId;
@@ -190,30 +201,73 @@ void setup() {
   // Mantém o relé ligado
   digitalWrite(pinoRele, HIGH);
 
+  pinMode(pinoBotaoReset, INPUT_PULLUP);
 
-  // ===================================================
-  // WI-FI
-  // ===================================================
 
   Serial.println();
   Serial.println("========================================");
   Serial.println("INICIANDO SISTEMA");
   Serial.println("========================================");
 
-  Serial.print("Conectando ao Wi-Fi: ");
-  Serial.println(ssid);
+  // ===================================================
+  // IDENTIFICACAO DO DISPOSITIVO (hardwareId = MAC de fabrica, via eFuse)
+  // ===================================================
+  // WiFi.macAddress() depende do radio Wi-Fi ja estar inicializado — mesmo
+  // com WiFi.mode(WIFI_STA) antes, o timing pode falhar e retornar
+  // "00:00:00:00:00:00" (reproduzido em bancada). ESP.getEfuseMac() le o MAC
+  // de fabrica direto do chip, sem depender do driver Wi-Fi, e por isso e
+  // mais confiavel para gerar o hardwareId usado para nomear o ponto de
+  // acesso de configuracao e identificar o dispositivo nas chamadas de API.
 
+  uint64_t chipId = ESP.getEfuseMac();
+  char macBuf[13];
+  snprintf(macBuf, sizeof(macBuf), "%04X%08X", (uint16_t)(chipId >> 32), (uint32_t)chipId);
+  hardwareId = String(macBuf);
 
-  WiFi.begin(ssid, password);
+  Serial.print("Codigo de pareamento deste dispositivo: ");
+  Serial.println(hardwareId);
 
+  // ===================================================
+  // WI-FI (portal de configuracao via WiFiManager)
+  // ===================================================
 
-  while (WiFi.status() != WL_CONNECTED) {
+  WiFiManager wm;
 
-    delay(500);
-
-    Serial.print(".");
+  // Janela de alguns segundos logo no boot para apagar o Wi-Fi salvo: da tempo
+  // do usuario ler a mensagem e so entao pressionar e segurar o botao BOOT
+  // (nao precisa ja estar segurando antes de ligar a placa).
+  Serial.println("Para apagar o Wi-Fi salvo, pressione e segure o botao BOOT nos proximos 3s...");
+  delay(3000);
+  if (digitalRead(pinoBotaoReset) == LOW) {
+    Serial.println("Botao BOOT pressionado: apagando Wi-Fi salvo...");
+    wm.resetSettings();
   }
 
+  // Exibe o codigo de pareamento diretamente na pagina do portal, para que o
+  // usuario nao precise abrir o Serial Monitor em nenhum momento.
+  String infoHtml =
+    "<p style='font-size:16px;margin-bottom:4px'>Codigo de pareamento deste dispositivo:</p>"
+    "<p style='font-size:22px;font-weight:bold;letter-spacing:2px;margin-top:0'>" + hardwareId + "</p>"
+    "<p style='font-size:13px'>Anote esse codigo — ele sera pedido na aplicacao web para vincular esta tomada a sua conta.</p>";
+  WiFiManagerParameter infoParam(infoHtml.c_str());
+  wm.addParameter(&infoParam);
+
+  wm.setConfigPortalTimeout(300);  // 5 min tentando configurar antes de reiniciar e tentar de novo
+
+  String apName = "SmartPlug-" + hardwareId.substring(6);  // últimos 6 chars do MAC, nome curto
+
+  Serial.println("Conectando ao Wi-Fi salvo (ou abrindo portal de configuracao)...");
+  Serial.print("Se necessario, conecte-se ao Wi-Fi \"");
+  Serial.print(apName);
+  Serial.println("\" para configurar.");
+
+  bool conectado = wm.autoConnect(apName.c_str(), apSenhaPortal);
+
+  if (!conectado) {
+    Serial.println("Nao foi possivel conectar ao Wi-Fi. Reiniciando...");
+    delay(2000);
+    ESP.restart();
+  }
 
   Serial.println();
   Serial.println("Wi-Fi conectado!");
@@ -223,13 +277,6 @@ void setup() {
 
   wifiClient.setInsecure();
   Serial.println("HTTPS configurado.");
-
-  // ===================================================
-  // IDENTIFICACAO DO DISPOSITIVO (hardwareId = MAC sem separadores)
-  // ===================================================
-
-  hardwareId = WiFi.macAddress();
-  hardwareId.replace(":", "");
 
   apiURL = String(apiBaseURL) + hardwareId + "/readings";
   apiControlURL = String(apiBaseURL) + hardwareId + "/control";
