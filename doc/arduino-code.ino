@@ -210,17 +210,19 @@ void setup() {
   Serial.println("========================================");
 
   // ===================================================
-  // IDENTIFICACAO DO DISPOSITIVO (hardwareId = MAC sem separadores)
+  // IDENTIFICACAO DO DISPOSITIVO (hardwareId = MAC de fabrica, via eFuse)
   // ===================================================
-  // O MAC address e fixo no chip, mas so e lido corretamente depois que o
-  // radio Wi-Fi e inicializado (WiFi.mode) — sem isso, WiFi.macAddress()
-  // pode retornar "00:00:00:00:00:00". Usamos o MAC tanto para nomear o
-  // ponto de acesso de configuracao quanto como identificador do dispositivo
-  // nas chamadas de API.
+  // WiFi.macAddress() depende do radio Wi-Fi ja estar inicializado — mesmo
+  // com WiFi.mode(WIFI_STA) antes, o timing pode falhar e retornar
+  // "00:00:00:00:00:00" (reproduzido em bancada). ESP.getEfuseMac() le o MAC
+  // de fabrica direto do chip, sem depender do driver Wi-Fi, e por isso e
+  // mais confiavel para gerar o hardwareId usado para nomear o ponto de
+  // acesso de configuracao e identificar o dispositivo nas chamadas de API.
 
-  WiFi.mode(WIFI_STA);
-  hardwareId = WiFi.macAddress();
-  hardwareId.replace(":", "");
+  uint64_t chipId = ESP.getEfuseMac();
+  char macBuf[13];
+  snprintf(macBuf, sizeof(macBuf), "%04X%08X", (uint16_t)(chipId >> 32), (uint32_t)chipId);
+  hardwareId = String(macBuf);
 
   Serial.print("Codigo de pareamento deste dispositivo: ");
   Serial.println(hardwareId);
