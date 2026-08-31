@@ -83,8 +83,9 @@ model Verification {
 model Device {
   id          String   @id @default(cuid())
   name        String
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  hardwareId  String?  @unique              // ID de fábrica do ESP32 (MAC address, sem separadores) — usado para parear o hardware com uma conta sem editar o firmware
+  userId      String?                       // null = detectado pelo servidor mas ainda não pareado com nenhuma conta
+  user        User?    @relation(fields: [userId], references: [id], onDelete: Cascade)
   relayStatus Boolean  @default(true)       // Status do relé (true = ligado, false = desligado)
   readings    Reading[]
   createdAt   DateTime @default(now())

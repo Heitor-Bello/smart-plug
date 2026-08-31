@@ -9,6 +9,7 @@ import { Button } from "@/components/ui/Button";
 interface Device {
   id: string;
   name: string;
+  hardwareId: string | null;
   createdAt: Date;
 }
 
@@ -41,7 +42,7 @@ function DeviceCard({ device }: { device: Device }) {
   const [error, setError] = useState<string | null>(null);
 
   function copyId() {
-    navigator.clipboard.writeText(device.id);
+    navigator.clipboard.writeText(device.hardwareId ?? device.id);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
@@ -132,7 +133,7 @@ function DeviceCard({ device }: { device: Device }) {
           <div className="min-w-0">
             <h3 className="font-semibold text-foreground truncate">{device.name}</h3>
             <p className="text-sm text-muted-foreground font-mono mt-1 truncate">
-              ID: {device.id}
+              {device.hardwareId ? `Código: ${device.hardwareId}` : `ID: ${device.id}`}
             </p>
           </div>
 
@@ -141,7 +142,7 @@ function DeviceCard({ device }: { device: Device }) {
             <button
               onClick={copyId}
               className="text-muted-foreground hover:text-foreground transition-colors p-2 rounded-md hover:bg-muted"
-              title="Copiar ID"
+              title={device.hardwareId ? "Copiar código" : "Copiar ID"}
             >
               {copied ? (
                 <Check size={16} className="text-success" />
