@@ -356,7 +356,7 @@ tarifa/dono para calcular o custo) até que o usuário faça o pareamento via
 | energia  | number  | sim         | ≥ 0 kWh           | Energia acumulada (kWh)            |
 | rele     | boolean | não         | —                  | Status do relé no momento da leitura (default `true` se omitido) |
 
-O custo estimado da leitura (`Reading.cost`) e calculado automaticamente como `energia × tarifa do usuario`. Se `rele` for enviado, o `relayStatus` do device tambem e atualizado com esse valor, mesmo antes do pareamento.
+O custo estimado da leitura (`Reading.cost`) e calculado automaticamente como `energia × tarifa do usuario`. O campo `rele`, se enviado, e salvo apenas como historico da leitura (`Reading.relayOn`) — **nao** atualiza o `relayStatus` atual do device, que e o estado desejado do rele e so muda via `/control` (ver nota abaixo).
 
 **Resposta `201`** — dispositivo pareado, leitura salva
 ```json
@@ -411,7 +411,7 @@ Este endpoint **não exige autenticação de sessão** — é chamado diretament
 | energia  | number  | sim         | ≥ 0 kWh           | Energia acumulada (kWh)            |
 | rele     | boolean | não         | —                  | Status do relé no momento da leitura (default `true` se omitido) |
 
-O custo estimado da leitura (`Reading.cost`) e calculado automaticamente como `energia × tarifa do usuario`. Se `rele` for enviado, o `relayStatus` do device tambem e atualizado com esse valor.
+O custo estimado da leitura (`Reading.cost`) e calculado automaticamente como `energia × tarifa do usuario`. O campo `rele`, se enviado, e salvo apenas como historico da leitura (`Reading.relayOn`) — **nao** atualiza o `relayStatus` atual do device. Esse campo e o estado desejado do rele, definido apenas pelo usuario via `/control`; se a leitura tambem pudesse sobrescreve-lo, um clique recente do usuario poderia ser desfeito por uma leitura carregando um valor de `rele` mais antigo (buscado pelo firmware antes do clique).
 
 **Resposta `201`**
 ```json

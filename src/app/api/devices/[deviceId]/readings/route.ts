@@ -55,7 +55,12 @@ export async function POST(
   // Calcula o custo com base na tarifa do usuário (dispositivo ainda não pareado não tem tarifa)
   const custo = energia * (device.user?.tariff ?? 0);
 
-  // Salva a leitura
+  // Salva a leitura. Não atualiza Device.relayStatus aqui: esse campo é o estado
+  // desejado do relé (definido pelo usuário via /control) e o ESP32 só o consulta —
+  // se a leitura sobrescrevesse relayStatus com o "rele" ecoado pelo firmware,
+  // um clique do usuário poderia ser desfeito por uma leitura que carregava um
+  // valor antigo, buscado antes do clique (relayOn abaixo é só o histórico dessa
+  // leitura específica, não afeta o estado atual do device).
   const reading = await prisma.reading.create({
     data: {
       current: corrente,
@@ -66,14 +71,6 @@ export async function POST(
       deviceId,
     },
   });
-
-  // Se o status do relé foi enviado, atualiza no device também
-  if (typeof rele === "boolean") {
-    await prisma.device.update({
-      where: { id: deviceId },
-      data: { relayStatus: rele },
-    });
-  }
 
   return NextResponse.json({ id: reading.id }, { status: 201 });
 }
