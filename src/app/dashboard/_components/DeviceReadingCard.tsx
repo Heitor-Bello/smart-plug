@@ -11,6 +11,7 @@ interface Reading {
 interface Device {
   id: string;
   name: string;
+  hardwareId: string | null;
   relayStatus: boolean;
 }
 
@@ -82,7 +83,7 @@ export function DeviceReadingCard({
         <div className="min-w-0">
           <h3 className="font-semibold text-foreground truncate">{device.name}</h3>
           <p className="text-xs text-muted-foreground font-mono mt-0.5 truncate">
-            {device.id}
+            {device.hardwareId ? `Código: ${device.hardwareId}` : device.id}
           </p>
         </div>
         <span
