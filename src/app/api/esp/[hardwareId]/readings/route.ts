@@ -58,13 +58,6 @@ export async function POST(
     });
   }
 
-  if (typeof rele === "boolean") {
-    await prisma.device.update({
-      where: { id: device.id },
-      data: { relayStatus: rele },
-    });
-  }
-
   if (!device.userId) {
     return NextResponse.json(
       {
@@ -77,6 +70,8 @@ export async function POST(
 
   const custo = energia * (device.user?.tariff ?? 0);
 
+  // Não atualiza Device.relayStatus aqui: é o estado desejado do relé, definido
+  // pelo usuário via /control. relayOn abaixo é só o histórico desta leitura.
   const reading = await prisma.reading.create({
     data: {
       current: corrente,
