@@ -21,9 +21,10 @@ Hoje o fluxo principal funciona assim:
 
 1. O usuario cria uma conta ou entra com e-mail/senha ou Google.
 2. Depois de autenticado, acessa a area de dashboard.
-3. Na area autenticada, pode cadastrar dispositivos e copiar seus IDs.
-4. Um dispositivo externo pode enviar leituras para a API usando o ID do dispositivo.
-5. O usuario tambem pode editar nome e avatar do perfil.
+3. O ESP32 e ligado, configura o Wi-Fi de casa por um portal proprio (sem precisar da IDE do Arduino) e passa a se identificar sozinho pelo MAC address (hardwareId).
+4. Na area autenticada, o usuario digita o codigo de pareamento exibido pelo dispositivo (portal de Wi-Fi ou Serial Monitor) para vincula-lo a propria conta.
+5. Uma vez pareado, o dispositivo envia leituras para a API automaticamente.
+6. O usuario tambem pode editar nome e avatar do perfil.
 
 ## Stack Tecnica
 
@@ -171,8 +172,10 @@ Essa rota delega o tratamento completo ao Better Auth via `toNextJsHandler(auth)
 
 #### Leituras de energia
 
-- `POST /api/devices/[deviceId]/readings`
-	Recebe uma leitura de um dispositivo existente e grava no banco. Rota publica, chamada diretamente pelo hardware (ESP32).
+- `POST /api/esp/[hardwareId]/readings`
+	Rota atual usada pelo firmware, identificada pelo MAC address do ESP32 (`hardwareId`), nao pelo `id` interno. Se o `hardwareId` ainda nao existir no banco, o dispositivo e auto-registrado como "nao pareado" (`userId` nulo); nesse estado a leitura nao e persistida ate o usuario parear o dispositivo em `POST /api/devices/claim`. Rota publica, chamada diretamente pelo hardware.
+- `POST /api/devices/[deviceId]/readings` (legado)
+	Mesma funcao, identificada pelo `id` interno (cuid). Mantida para compatibilidade; o firmware atual usa a rota acima.
 
 O payload esperado hoje e:
 
@@ -190,9 +193,11 @@ Mapeamento para o banco:
 - `corrente` -> `Reading.current`
 - `potencia` -> `Reading.power`
 - `energia` -> `Reading.energy`
-- `rele` (opcional) -> `Reading.relayOn` e tambem atualiza `Device.relayStatus`
+- `rele` (opcional) -> apenas `Reading.relayOn` (historico daquela leitura)
 
 O custo da leitura (`Reading.cost`) e calculado no servidor como `energia * tarifa do usuario`.
+
+Importante: `rele` **nao** atualiza `Device.relayStatus`. Esse campo e o estado desejado do rele, definido apenas pelo usuario via `/control` — ver secao 10 (Controle remoto do rele) para o motivo.
 
 #### Relatorios
 
@@ -205,11 +210,18 @@ As leituras cruas sao agregadas em buckets de tamanho fixo por range, para mante
 
 #### Controle do rele
 
-- `GET /api/devices/[deviceId]/control`
-	Retorna o status atual do rele (`{ deviceId, ligado }`). Rota publica, consultada pelo hardware a cada ciclo para saber se deve ligar ou desligar.
+- `GET /api/esp/[hardwareId]/control`
+	Retorna o status desejado do rele (`{ claimed, ligado }`), identificado pelo MAC address. Rota publica, consultada pelo firmware a cada ciclo. Somente leitura — nao auto-registra o dispositivo.
+- `GET /api/devices/[deviceId]/control` (legado)
+	Mesma funcao, identificada pelo `id` interno.
 
 - `POST /api/devices/[deviceId]/control` (alias `PUT`)
-	Liga ou desliga o rele (`{ ligado: boolean }`). Exige autenticacao e valida que o dispositivo pertence ao usuario da sessao. Usado pelo botao de liga/desliga no dashboard.
+	Liga ou desliga o rele (`{ ligado: boolean }`). Exige autenticacao e valida que o dispositivo pertence ao usuario da sessao. Usado pelo botao de liga/desliga no dashboard — e a **unica** rota que altera `Device.relayStatus`.
+
+#### Pareamento de dispositivos
+
+- `POST /api/devices/claim`
+	Vincula a conta autenticada um dispositivo ja detectado pelo servidor (auto-registrado na primeira chamada de `/api/esp/[hardwareId]/readings`), a partir do codigo de pareamento (`hardwareId`) exibido pelo dispositivo. Body: `{ hardwareId, name }`. Retorna 404 se o codigo nunca apareceu no servidor, 409 se ja esta vinculado a outra conta.
 
 #### Upload de avatar
 
@@ -257,8 +269,9 @@ Campos principais:
 
 - `id`
 - `name`
-- `userId`
-- `relayStatus`: status atual do rele (`true` = ligado, `false` = desligado)
+- `hardwareId`: MAC address do ESP32 sem separadores, unico — identifica o dispositivo nas rotas `/api/esp/*`. `null` para dispositivos cadastrados manualmente (sem hardware associado)
+- `userId`: `null` enquanto o dispositivo foi detectado pelo servidor mas ainda nao foi pareado com nenhuma conta
+- `relayStatus`: status desejado do rele (`true` = ligado, `false` = desligado), alterado apenas via `/control`
 - `createdAt`
 - `updatedAt`
 
@@ -337,18 +350,18 @@ Implementado em `/dashboard/devices`.
 O usuario pode:
 
 - listar os dispositivos vinculados a propria conta
-- cadastrar um novo dispositivo informando apenas o nome
-- copiar o ID do dispositivo para uso externo
+- parear um dispositivo ja detectado pelo servidor, informando o codigo de pareamento (`hardwareId`) exibido pelo ESP32 (Serial Monitor ou portal de Wi-Fi) e um nome amigavel (`POST /api/devices/claim`)
+- copiar o codigo/ID do dispositivo para referencia
 - renomear um dispositivo com confirmacao inline
 - deletar um dispositivo (requer confirmacao para evitar exclusoes acidentais)
 
 A exclusao remove o dispositivo e todas as leituras associadas no banco via cascade.
 
-Esse ID e importante porque o endpoint de leituras usa o `deviceId` diretamente na URL.
+O firmware nao precisa mais ser editado por unidade: o mesmo `.ino` roda em qualquer ESP32, que se identifica sozinho pelo proprio MAC address. O vinculo com a conta e feito depois, pelo pareamento acima — ver `doc/arduino-code.ino` para o fluxo completo (Wi-Fi + pareamento).
 
 ### 6. Ingestao de leituras do hardware
 
-Implementada em `POST /api/devices/[deviceId]/readings`.
+Implementada em `POST /api/esp/[hardwareId]/readings` (a rota legada `POST /api/devices/[deviceId]/readings` continua disponivel).
 
 A API hoje faz:
 
@@ -417,9 +430,9 @@ Um limiar de 10 segundos (`STALE_MS`, marcado no codigo com um `TODO` para ser a
 
 ### 10. Controle remoto do rele
 
-Cada dispositivo tem um `relayStatus` (ligado/desligado). O usuario pode ligar ou desligar remotamente pelo card do dispositivo no dashboard, que chama `POST /api/devices/[deviceId]/control`.
+Cada dispositivo tem um `relayStatus` (ligado/desligado). O usuario pode ligar ou desligar remotamente pelo card do dispositivo no dashboard, que chama `POST /api/devices/[deviceId]/control` — a **unica** rota que escreve nesse campo.
 
-O ESP32 consulta `GET /api/devices/[deviceId]/control` a cada ciclo do loop para saber o status desejado e aciona o pino do rele fisico de acordo. O firmware tambem reporta o status do rele em cada leitura enviada (`rele` no payload de `/readings`), mantendo `Device.relayStatus` e `Reading.relayOn` sincronizados mesmo se a chamada de controle falhar.
+O ESP32 consulta `GET /api/esp/[hardwareId]/control` a cada ciclo do loop para saber o status desejado e aciona o pino do rele fisico de acordo. O firmware tambem reporta o status do rele em cada leitura enviada (`rele` no payload de `/readings`), mas isso e salvo apenas como historico daquela leitura (`Reading.relayOn`) — a leitura nunca escreve em `Device.relayStatus`. Essa separacao existe porque, se a leitura tambem pudesse atualizar `relayStatus`, um clique recente do usuario podia ser desfeito silenciosamente por uma leitura carregando um valor de `rele` mais antigo (buscado pelo firmware antes do clique), fazendo o toggle do dashboard exigir dois cliques em alguns casos.
 
 ### 11. Tarifa de energia e custo estimado
 
@@ -469,6 +482,16 @@ Primeira integracao do projeto com a Claude API (Anthropic), usando o SDK oficia
 - O assistente pode responder perguntas sobre como o app funciona e, para perguntas sobre dados reais (consumo, custo, potencia de um periodo), usa uma tool (`get_consumption_data`) que consulta o banco sob demanda, sempre restrita aos dispositivos do usuario autenticado — a IA nunca recebe acesso direto ao banco nem pode ver dados de outro usuario
 - Implementado com um loop manual de tool use (nao o Tool Runner beta do SDK), para manter a resposta simples e sem streaming nesta primeira versao
 - Historico de conversa vive apenas no estado do componente no navegador — nao e persistido no banco nesta versao
+
+### 14. Pareamento de dispositivos e configuracao de Wi-Fi sem editar o firmware
+
+Cada ESP32 se identifica pelo proprio MAC address (`hardwareId`), calculado em runtime, em vez de um `deviceId` fixo gravado no codigo — o mesmo `.ino` funciona em qualquer placa, sem editar e regravar firmware por unidade.
+
+**Wi-Fi:** nao ha mais SSID/senha fixos no codigo. No primeiro boot (ou sempre que o Wi-Fi salvo falhar), o ESP32 abre um ponto de acesso proprio com um portal de configuracao (biblioteca `WiFiManager`, servido em `192.168.4.1`), onde o usuario escolhe a rede de casa e digita a senha direto do celular — sem abrir a IDE do Arduino. As credenciais ficam salvas no chip entre reinicios. Segurar o botao BOOT (GPIO0) da placa durante a ligacao apaga o Wi-Fi salvo e reabre o portal, util se o dispositivo mudar de rede/casa.
+
+**Pareamento:** o portal de Wi-Fi ja exibe o codigo de pareamento do dispositivo na propria pagina (tambem impresso no Serial Monitor), entao o usuario nunca precisa da IDE do Arduino para nada. Na primeira leitura enviada, o dispositivo se auto-registra no servidor como "nao pareado" (`POST /api/esp/[hardwareId]/readings`); o usuario entao digita esse codigo na tela de dispositivos da aplicacao (`POST /api/devices/claim`) para vincula-lo a propria conta. So depois de pareado o dispositivo passa a gerar historico de leituras.
+
+Fluxo completo, do ponto de vista do usuario: ligar o ESP32 → conectar o celular no Wi-Fi temporario dele → configurar a rede de casa (a pagina ja mostra o codigo) → abrir a aplicacao web → digitar o codigo em "Adicionar dispositivo". Detalhes de implementacao do firmware em `doc/arduino-code.ino`.
 
 ## Estrutura do Projeto
 
