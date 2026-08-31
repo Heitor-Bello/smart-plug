@@ -212,10 +212,13 @@ void setup() {
   // ===================================================
   // IDENTIFICACAO DO DISPOSITIVO (hardwareId = MAC sem separadores)
   // ===================================================
-  // O MAC address e fixo no chip e pode ser lido mesmo antes de conectar —
-  // usamos ele tanto para nomear o ponto de acesso de configuracao quanto
-  // como identificador do dispositivo nas chamadas de API.
+  // O MAC address e fixo no chip, mas so e lido corretamente depois que o
+  // radio Wi-Fi e inicializado (WiFi.mode) — sem isso, WiFi.macAddress()
+  // pode retornar "00:00:00:00:00:00". Usamos o MAC tanto para nomear o
+  // ponto de acesso de configuracao quanto como identificador do dispositivo
+  // nas chamadas de API.
 
+  WiFi.mode(WIFI_STA);
   hardwareId = WiFi.macAddress();
   hardwareId.replace(":", "");
 
@@ -228,6 +231,11 @@ void setup() {
 
   WiFiManager wm;
 
+  // Janela de alguns segundos logo no boot para apagar o Wi-Fi salvo: da tempo
+  // do usuario ler a mensagem e so entao pressionar e segurar o botao BOOT
+  // (nao precisa ja estar segurando antes de ligar a placa).
+  Serial.println("Para apagar o Wi-Fi salvo, pressione e segure o botao BOOT nos proximos 3s...");
+  delay(3000);
   if (digitalRead(pinoBotaoReset) == LOW) {
     Serial.println("Botao BOOT pressionado: apagando Wi-Fi salvo...");
     wm.resetSettings();
