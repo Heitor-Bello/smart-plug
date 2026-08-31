@@ -52,8 +52,8 @@ export async function POST(
     );
   }
 
-  // Calcula o custo com base na tarifa do usuário
-  const custo = energia * device.user.tariff;
+  // Calcula o custo com base na tarifa do usuário (dispositivo ainda não pareado não tem tarifa)
+  const custo = energia * (device.user?.tariff ?? 0);
 
   // Salva a leitura
   const reading = await prisma.reading.create({

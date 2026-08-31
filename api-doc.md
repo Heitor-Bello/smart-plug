@@ -283,11 +283,111 @@ Remove um dispositivo e todas as suas leituras (cascade). Apenas o dono pode del
 
 ---
 
+### `POST /api/devices/claim`
+
+Vincula à conta autenticada um dispositivo já detectado pelo servidor (auto-registrado
+na primeira vez que o ESP32 chamou `POST /api/esp/[hardwareId]/readings`), a partir do
+código de pareamento (`hardwareId`, o MAC address do ESP32 sem separadores) exibido no
+Serial Monitor do firmware. Substitui o fluxo antigo de copiar o `id` gerado pelo banco
+e colar manualmente no código do ESP32 antes de gravar.
+
+**Autenticação:** obrigatória
+
+**Body**
+```json
+{
+  "hardwareId": "AC67B2C1D2E3",
+  "name": "Tomada Sala"
+}
+```
+
+| Campo      | Tipo   | Obrigatório | Descrição                                             |
+|------------|--------|-------------|--------------------------------------------------------|
+| hardwareId | string | sim         | Código impresso pelo ESP32 (aceita com ou sem `:`)      |
+| name       | string | sim         | Nome amigável para o dispositivo                        |
+
+**Resposta `200`** — dispositivo atualizado (mesmo formato do `POST /api/devices`, agora
+com `hardwareId` e `userId` preenchidos)
+
+**Erros**
+| Status | Motivo                                                        |
+|--------|-----------------------------------------------------------------|
+| 400    | `hardwareId` ou `name` ausente/vazio                            |
+| 401    | Não autenticado                                                 |
+| 404    | Nenhum dispositivo com esse código foi detectado pelo servidor  |
+| 409    | Dispositivo já vinculado a outra conta                          |
+
+---
+
 ## Leituras
 
-### `POST /api/devices/[deviceId]/readings`
+### `POST /api/esp/[hardwareId]/readings`
 
-Recebe e armazena uma leitura de sensor enviada pelo dispositivo (ESP32). Este endpoint **não exige autenticação de sessão** — é chamado diretamente pelo hardware.
+Recebe e armazena uma leitura de sensor enviada pelo dispositivo (ESP32), identificado
+pelo seu ID de fábrica (`hardwareId` = MAC address sem separadores) em vez do `id`
+interno — o mesmo firmware funciona em qualquer placa, sem editar código por unidade.
+Este endpoint **não exige autenticação de sessão** — é chamado diretamente pelo
+hardware.
+
+Se o `hardwareId` ainda não existir no banco, o dispositivo é auto-registrado como
+**não pareado** (`userId` nulo). Nesse estado a leitura não é persistida (não há
+tarifa/dono para calcular o custo) até que o usuário faça o pareamento via
+`POST /api/devices/claim`.
+
+**Parâmetro de rota**
+| Parâmetro  | Tipo   | Descrição                              |
+|------------|--------|------------------------------------------|
+| hardwareId | string | MAC address do ESP32, sem separadores     |
+
+**Body** — igual ao antigo `POST /api/devices/[deviceId]/readings`:
+```json
+{
+  "corrente": 1.23,
+  "potencia": 280.5,
+  "energia": 0.045,
+  "rele": true
+}
+```
+
+| Campo    | Tipo    | Obrigatório | Range              | Descrição                          |
+|----------|---------|-------------|--------------------|-------------------------------------|
+| corrente | number  | sim         | 0 – 100 A         | Corrente elétrica (A)              |
+| potencia | number  | sim         | 0 – 25 000 W      | Potência instantânea (W)           |
+| energia  | number  | sim         | ≥ 0 kWh           | Energia acumulada (kWh)            |
+| rele     | boolean | não         | —                  | Status do relé no momento da leitura (default `true` se omitido) |
+
+O custo estimado da leitura (`Reading.cost`) e calculado automaticamente como `energia × tarifa do usuario`. Se `rele` for enviado, o `relayStatus` do device tambem e atualizado com esse valor, mesmo antes do pareamento.
+
+**Resposta `201`** — dispositivo pareado, leitura salva
+```json
+{
+  "id": "cuid",
+  "claimed": true
+}
+```
+
+**Resposta `202`** — dispositivo detectado mas ainda não pareado, leitura descartada
+```json
+{
+  "claimed": false,
+  "message": "Dispositivo detectado, aguardando pareamento no app"
+}
+```
+
+**Erros**
+| Status | Motivo                                          |
+|--------|---------------------------------------------------|
+| 400    | Campos ausentes ou com tipo inválido               |
+| 422    | Valores fora do range permitido                    |
+
+---
+
+### `POST /api/devices/[deviceId]/readings` (legado)
+
+Variante equivalente, identificada pelo `id` interno (cuid) em vez do `hardwareId`.
+Mantida para compatibilidade e para dispositivos cadastrados manualmente (sem
+hardware associado); o firmware atual usa `POST /api/esp/[hardwareId]/readings`.
+Este endpoint **não exige autenticação de sessão** — é chamado diretamente pelo hardware.
 
 **Parâmetro de rota**
 | Parâmetro | Tipo   | Descrição      |
@@ -331,9 +431,35 @@ O custo estimado da leitura (`Reading.cost`) e calculado automaticamente como `e
 
 ## Controle do Relé
 
-### `GET /api/devices/[deviceId]/control`
+### `GET /api/esp/[hardwareId]/control`
 
-Retorna o status atual do relé de um dispositivo. Este endpoint **não exige autenticação de sessão** — é chamado diretamente pelo hardware (ESP32) a cada ciclo para saber se deve ligar ou desligar o relé.
+Retorna o status atual do relé de um dispositivo, identificado pelo `hardwareId` (MAC
+sem separadores). Chamado pelo firmware a cada ciclo para saber se deve ligar ou
+desligar o relé. Somente leitura — não auto-registra o dispositivo (isso acontece em
+`POST /api/esp/[hardwareId]/readings`, chamado no mesmo ciclo). Este endpoint **não
+exige autenticação de sessão**.
+
+**Parâmetro de rota**
+| Parâmetro  | Tipo   | Descrição                          |
+|------------|--------|--------------------------------------|
+| hardwareId | string | MAC address do ESP32, sem separadores |
+
+**Resposta `200`**
+```json
+{
+  "claimed": true,
+  "ligado": true
+}
+```
+Se o `hardwareId` ainda não foi visto pelo servidor, retorna `{ "claimed": false, "ligado": true }` (relé assumido ligado por padrão até o primeiro contato).
+
+---
+
+### `GET /api/devices/[deviceId]/control` (legado)
+
+Variante equivalente, identificada pelo `id` interno (cuid). Mantida para
+compatibilidade e para dispositivos cadastrados manualmente; o firmware atual usa
+`GET /api/esp/[hardwareId]/control`. Este endpoint **não exige autenticação de sessão**.
 
 **Parâmetro de rota**
 | Parâmetro | Tipo   | Descrição      |

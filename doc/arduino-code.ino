@@ -12,9 +12,15 @@ const char* password = "amigao2022";
 
 WiFiClientSecure wifiClient;
 
-// URLs da API
-const char* apiURL = "https://smart-plug-woad.vercel.app/api/devices/cmnqqi3jp0001hcd467d/readings";
-const char* apiControlURL = "https://smart-plug-woad.vercel.app/api/devices/cmnqqi3jp0001hcd467d/control";
+// URLs da API — o deviceId nao e mais fixo no codigo. Cada ESP32 se identifica
+// pelo proprio MAC address (hardwareId), calculado em runtime no setup(). Isso
+// permite gravar o mesmo firmware em qualquer placa: o pareamento com uma conta
+// e feito depois, pelo app, digitando o codigo impresso no Serial Monitor.
+const char* apiBaseURL = "https://smart-plug-woad.vercel.app/api/esp/";
+
+String hardwareId;
+String apiURL;
+String apiControlURL;
 
 
 // =====================================================
@@ -218,6 +224,21 @@ void setup() {
   wifiClient.setInsecure();
   Serial.println("HTTPS configurado.");
 
+  // ===================================================
+  // IDENTIFICACAO DO DISPOSITIVO (hardwareId = MAC sem separadores)
+  // ===================================================
+
+  hardwareId = WiFi.macAddress();
+  hardwareId.replace(":", "");
+
+  apiURL = String(apiBaseURL) + hardwareId + "/readings";
+  apiControlURL = String(apiBaseURL) + hardwareId + "/control";
+
+  Serial.println("========================================");
+  Serial.print("CODIGO DE PAREAMENTO: ");
+  Serial.println(hardwareId);
+  Serial.println("Digite esse codigo no app para vincular");
+  Serial.println("esta tomada a sua conta.");
   Serial.println("========================================");
 
 
