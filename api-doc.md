@@ -188,18 +188,22 @@ Lista todos os dispositivos cadastrados pelo usuário autenticado, ordenados do 
   {
     "id": "cuid",
     "name": "Tomada Sala",
+    "hardwareId": "AC67B2C1D2E3",
     "userId": "...",
+    "relayStatus": true,
     "createdAt": "...",
     "updatedAt": "..."
   }
 ]
 ```
 
+`hardwareId` e `null` para dispositivos cadastrados manualmente (sem hardware associado, via este endpoint) — ver `POST /api/devices/claim` para o fluxo de pareamento com um ESP32 real.
+
 ---
 
 ### `POST /api/devices`
 
-Cria um novo dispositivo vinculado ao usuário autenticado.
+Cria um novo dispositivo vinculado ao usuário autenticado, sem `hardwareId` (uso manual/sem hardware associado — para vincular um ESP32 real, ver `POST /api/devices/claim`).
 
 **Autenticação:** obrigatória
 

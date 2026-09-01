@@ -98,7 +98,8 @@ src/
 │   │   ├── devices/              # Gerenciamento de dispositivos
 │   │   │   ├── page.tsx
 │   │   │   └── _components/
-│   │   │       ├── add-device-form.tsx
+│   │   │       ├── pairing-guide.tsx    # Guia visual (6 passos) para conectar o ESP32 no Wi-Fi e parear
+│   │   │       ├── add-device-form.tsx  # Formulario de pareamento (hardwareId + nome) -> POST /api/devices/claim
 │   │   │       └── device-list.tsx
 │   │   │
 │   │   ├── reports/              # Historico e relatorios de consumo
@@ -119,7 +120,8 @@ src/
 │       ├── auth/[...all]/        # Better Auth (login, cadastro, OAuth, senha)
 │       ├── chat/                  # Assistente de chat (Claude API + tool use)
 │       ├── dashboard/            # Dados agregados do dashboard em tempo real
-│       ├── devices/               # CRUD de dispositivos + leituras + controle do rele
+│       ├── devices/               # CRUD de dispositivos + leituras/controle (legado, por id) + claim/ (pareamento por hardwareId)
+│       ├── esp/[hardwareId]/      # Leituras + controle usados pelo firmware atual, identificados pelo MAC (hardwareId), nao pelo id interno
 │       ├── reports/               # Serie historica agregada (potencia/energia/custo)
 │       │   └── insights/          # Avisos de IA sobre o historico (com cache)
 │       ├── user/                  # Tarifa de energia do usuario
